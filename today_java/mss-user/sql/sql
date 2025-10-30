@@ -1,0 +1,224 @@
+create table if not exists today.communities
+(
+    id          int auto_increment
+        primary key,
+    name        varchar(50)                         not null comment '社区名称',
+    location    varchar(100)                        not null comment '社区位置',
+    description text                                null comment '社区描述',
+    created_at  timestamp default CURRENT_TIMESTAMP null,
+    updated_at  timestamp default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP
+)
+    comment '社区信息表' charset = utf8mb4;
+
+create table if not exists today.reservation_approvals
+(
+    id             int auto_increment
+        primary key,
+    reservation_id int                                 not null comment '预约ID',
+    admin_id       int                                 not null comment '审核管理员ID',
+    status         tinyint                             not null comment '审核状态：1-通过，2-拒绝',
+    reason         varchar(255)                        null comment '审核理由',
+    created_at     timestamp default CURRENT_TIMESTAMP null
+)
+    comment '预约审核记录表' charset = utf8mb4;
+
+create index idx_admin_id
+    on today.reservation_approvals (admin_id);
+
+create index idx_reservation_id
+    on today.reservation_approvals (reservation_id);
+
+create table if not exists today.reservations
+(
+    id                 int auto_increment
+        primary key,
+    reservation_no     varchar(20)                          not null comment '预约编号',
+    room_id            int                                  not null comment '预约教室ID',
+    reservation_date   date                                 not null comment '预约日期',
+    activity_name      varchar(255)                         not null comment '活动名称或用途',
+    department         varchar(255)                         not null comment '申请部门',
+    need_projection    tinyint(1) default 0                 null comment '是否需要多媒体投屏',
+    user_name          varchar(100)                         not null comment '申请人姓名',
+    user_cn            varchar(100)                         null comment '单点登录 CN',
+    college            varchar(100)                         not null comment '所属学院',
+    major              varchar(100)                         not null comment '年级专业',
+    contact            varchar(100)                         not null comment '联系方式',
+    teacher_name       varchar(100)                         null comment '指导老师姓名（如有）',
+    teacher_contact    varchar(100)                         null comment '指导老师联系方式（如有）',
+    other_requirements text                                 null comment '其他需求（如有）',
+    attendees          int        default 1                 null comment '参与人数',
+    status             tinyint    default 0                 null comment '状态：0-待审核，1-已通过，2-已拒绝，3-已取消，4-已完成',
+    remark             text                                 null comment '备注（管理员填写）',
+    created_at         timestamp  default CURRENT_TIMESTAMP null,
+    updated_at         timestamp  default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    start_time_id      int                                  not null comment '开始时间点ID',
+    end_time_id        int                                  not null comment '结束时间点ID',
+    student_id         varchar(100)                         null comment '''申请人用户ID（单点登录系统ID）''',
+    constraint uniq_reservation
+        unique (room_id, reservation_date, start_time_id, end_time_id) comment '防止同一教室同一时间段重复预约'
+)
+    comment '预约申请与排期表' charset = utf8mb4;
+
+create table if not exists today.rooms
+(
+    id           int auto_increment
+        primary key,
+    community_id int                                 not null comment '所属社区ID',
+    name         varchar(50)                         not null comment '教室名称',
+    capacity     int                                 not null comment '容纳人数',
+    image_url    varchar(455)                        null comment '教室图片URL',
+    description  text                                null comment '教室描述',
+    status       tinyint   default 1                 null comment '状态：1-可用，0-不可用',
+    created_at   timestamp default CURRENT_TIMESTAMP null,
+    updated_at   timestamp default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP
+)
+    comment '教室信息表' charset = utf8mb4;
+
+create index community_id
+    on today.rooms (community_id);
+
+create table if not exists today.sys_menu
+(
+    id          int auto_increment comment '菜单ID（主键，自增）'
+        primary key,
+    name        varchar(100)                       not null comment '菜单名称',
+    url         varchar(255)                       null comment '菜单访问路径地址',
+    parent_id   int                                null comment '父菜单ID（为NULL表示一级菜单）',
+    icon        varchar(100)                       null comment '菜单图标',
+    order_num   int      default 0                 null comment '菜单显示排序值',
+    create_time datetime default CURRENT_TIMESTAMP null comment '创建时间',
+    update_time datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间'
+)
+    comment '菜单信息表';
+
+create table if not exists today.sys_permission
+(
+    id          int auto_increment comment '权限ID（主键，自增）'
+        primary key,
+    name        varchar(100)                       not null comment '权限名称（如：查看用户、编辑角色）',
+    code        varchar(100)                       not null comment '权限标识编码（用于后端权限判断）',
+    description varchar(255)                       null comment '权限描述',
+    create_time datetime default CURRENT_TIMESTAMP null comment '创建时间',
+    update_time datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
+    constraint code
+        unique (code)
+)
+    comment '权限信息表';
+
+create table if not exists today.sys_role
+(
+    id          int auto_increment comment '角色ID（主键，自增）'
+        primary key,
+    name        varchar(50)                        not null comment '角色名称（如：管理员、普通用户）',
+    description varchar(255)                       null comment '角色描述',
+    create_time datetime default CURRENT_TIMESTAMP null comment '创建时间',
+    update_time datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
+    constraint name
+        unique (name)
+)
+    comment '角色信息表';
+
+create table if not exists today.sys_role_menu
+(
+    role_id int not null comment '角色ID（逻辑外键，关联 role 表）',
+    menu_id int not null comment '菜单ID（逻辑外键，关联 menu 表）',
+    primary key (role_id, menu_id)
+)
+    comment '角色与菜单关联表';
+
+create table if not exists today.sys_role_permission
+(
+    role_id       int not null comment '角色ID（逻辑外键，关联 role 表）',
+    permission_id int not null comment '权限ID（逻辑外键，关联 permission 表）',
+    primary key (role_id, permission_id)
+)
+    comment '角色与权限关联表';
+
+create table if not exists today.sys_user
+(
+    id          int auto_increment comment '用户ID（主键，自增）'
+        primary key,
+    account     varchar(50)                        not null comment '用户账号（CAS 登录唯一标识）',
+    name        varchar(100)                       null comment '用户姓名',
+    email       varchar(100)                       null comment '用户邮箱',
+    phone       varchar(20)                        null comment '用户电话',
+    status      tinyint  default 1                 null comment '用户状态（1：启用，0：禁用）',
+    create_time datetime default CURRENT_TIMESTAMP null comment '创建时间',
+    update_time datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
+    constraint account
+        unique (account)
+)
+    comment '用户信息表';
+
+create table if not exists today.sys_user_role
+(
+    user_id int not null comment '用户ID（逻辑外键，关联 user 表）',
+    role_id int not null comment '角色ID（逻辑外键，关联 role 表）',
+    primary key (user_id, role_id)
+)
+    comment '用户与角色关联表';
+
+create table if not exists today.time_points
+(
+    id         int auto_increment
+        primary key,
+    point      time                                not null comment '时间点，例如 08:30',
+    status     tinyint   default 1                 null comment '状态：1-可用，0-不可用',
+    created_at timestamp default CURRENT_TIMESTAMP null,
+    updated_at timestamp default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP,
+    constraint point
+        unique (point)
+)
+    comment '可选预约时间点表' charset = utf8mb4;
+
+create table if not exists today.user_penalty
+(
+    id         bigint auto_increment
+        primary key,
+    user_id    varchar(64)                        not null,
+    start_time datetime                           not null,
+    end_time   datetime                           not null,
+    created_at datetime default CURRENT_TIMESTAMP not null
+);
+
+create index idx_active
+    on today.user_penalty (user_id, end_time);
+
+create index idx_user
+    on today.user_penalty (user_id);
+
+INSERT INTO today.communities (name, location, description, created_at, updated_at) VALUES ('第一园区', '位于1号楼和2号楼', '学生第一社区包含多种功能教室，适合各类学生活动', '2025-04-08 00:52:35', '2025-04-10 16:52:04');
+INSERT INTO today.communities (name, location, description, created_at, updated_at) VALUES ('第二园区', '位于7号楼', '学生第二社区设施完善，环境优美', '2025-04-08 00:52:35', '2025-04-10 16:52:04');
+INSERT INTO today.communities (name, location, description, created_at, updated_at) VALUES ('第三园区', '位于9号楼', '学生第三社区是新建社区，拥有现代化设备', '2025-04-08 00:52:35', '2025-04-10 16:52:04');
+
+INSERT INTO today.reservation_approvals (reservation_id, admin_id, status, reason, created_at) VALUES (16, 1, 1, '1', '2025-04-27 20:36:45');
+INSERT INTO today.reservations (reservation_no, room_id, reservation_date, activity_name, department, need_projection, user_name, user_cn, college, major, contact, teacher_name, teacher_contact, other_requirements, attendees, status, remark, created_at, updated_at, start_time_id, end_time_id, student_id) VALUES ('R20250427161201671', 1, '2025-04-26', '1', '1', 0, '1', null, '1', '1', '15960171248', '', '', '', 1111, 1, null, '2025-04-25 20:26:08', '2025-04-27 20:27:09', 1, 2, '20220517306');
+INSERT INTO today.reservations (reservation_no, room_id, reservation_date, activity_name, department, need_projection, user_name, user_cn, college, major, contact, teacher_name, teacher_contact, other_requirements, attendees, status, remark, created_at, updated_at, start_time_id, end_time_id, student_id) VALUES ('R20250427161421770', 1, '2025-04-27', '1', '1', 0, '1', null, '1', '1', '15960171248', '', '', '', 11111, 0, null, '2025-04-27 08:14:22', '2025-04-27 20:26:08', 7, 14, '20220517306');
+INSERT INTO today.reservations (reservation_no, room_id, reservation_date, activity_name, department, need_projection, user_name, user_cn, college, major, contact, teacher_name, teacher_contact, other_requirements, attendees, status, remark, created_at, updated_at, start_time_id, end_time_id, student_id) VALUES ('R20250429170229251', 1, '2025-04-29', '11', '1', 0, '1', null, '11', '11', '15960161248', '', '', '', 1, 0, null, '2025-04-29 09:02:29', '2025-04-29 09:02:29', 1, 4, '2022051730');
+INSERT INTO today.rooms (community_id, name, capacity, image_url, description, status, created_at, updated_at) VALUES (1, '党团活动室', 80, 'https://images.unsplash.com/photo-1580582932707-520aed937b7b', '适合举办党团活动和大型会议', 1, '2025-04-08 00:52:35', '2025-04-08 21:23:11');
+INSERT INTO today.rooms (community_id, name, capacity, image_url, description, status, created_at, updated_at) VALUES (1, '多功能研讨室1', 20, 'https://images.unsplash.com/photo-1580582932707-520aed937b7b', '配备投影仪和白板，适合小组讨论', 1, '2025-04-08 00:52:35', '2025-04-08 21:23:11');
+INSERT INTO today.rooms (community_id, name, capacity, image_url, description, status, created_at, updated_at) VALUES (1, '多功能研讨室2', 15, 'https://images.unsplash.com/photo-1580582932707-520aed937b7b', '配备圆桌，适合研讨会和小型会议', 1, '2025-04-08 00:52:35', '2025-04-08 21:23:11');
+INSERT INTO today.rooms (community_id, name, capacity, image_url, description, status, created_at, updated_at) VALUES (1, '体育馆', 30, 'https://images.unsplash.com/photo-1580582932707-520aed937b7b', '配备基础健身器材，适合体育活动', 1, '2025-04-08 00:52:35', '2025-04-08 21:23:11');
+INSERT INTO today.rooms (community_id, name, capacity, image_url, description, status, created_at, updated_at) VALUES (1, '心理咨询室', 20, 'https://images.unsplash.com/photo-1580582932707-520aed937b7b', '安静舒适的环境，适合心理咨询和辅导', 1, '2025-04-08 00:52:35', '2025-04-08 21:23:11');
+INSERT INTO today.rooms (community_id, name, capacity, image_url, description, status, created_at, updated_at) VALUES (1, '艺术室', 20, 'https://images.unsplash.com/photo-1580582932707-520aed937b7b', '配备艺术创作工具，适合艺术活动', 1, '2025-04-08 00:52:35', '2025-04-08 21:23:11');
+INSERT INTO today.rooms (community_id, name, capacity, image_url, description, status, created_at, updated_at) VALUES (2, '多功能活动室1', 30, 'https://images.unsplash.com/photo-1580582932707-520aed937b7b', '宽敞明亮，适合各类活动', 1, '2025-04-08 00:52:35', '2025-04-08 21:23:11');
+INSERT INTO today.rooms (community_id, name, capacity, image_url, description, status, created_at, updated_at) VALUES (2, '多功能活动室2', 30, 'https://images.unsplash.com/photo-1580582932707-520aed937b7b', '配备音响设备，适合文艺活动', 1, '2025-04-08 00:52:35', '2025-04-08 21:23:11');
+INSERT INTO today.rooms (community_id, name, capacity, image_url, description, status, created_at, updated_at) VALUES (2, '大厅心理聊吧', 40, 'https://images.unsplash.com/photo-1580582932707-520aed937b7b', '开放式空间，适合交流活动', 1, '2025-04-08 00:52:35', '2025-04-08 21:23:11');
+INSERT INTO today.rooms (community_id, name, capacity, image_url, description, status, created_at, updated_at) VALUES (2, '第一课室（体操馆）', 30, 'https://images.unsplash.com/photo-1580582932707-520aed937b7b', '配备体操设备，适合体育锻炼', 1, '2025-04-08 00:52:35', '2025-04-08 21:23:11');
+INSERT INTO today.rooms (community_id, name, capacity, image_url, description, status, created_at, updated_at) VALUES (3, '党团活动室', 80, 'https://images.unsplash.com/photo-1580582932707-520aed937b7b', '现代化会议设备，适合大型会议', 1, '2025-04-08 00:52:35', '2025-04-08 21:23:11');
+INSERT INTO today.rooms (community_id, name, capacity, image_url, description, status, created_at, updated_at) VALUES (3, '创新创优室', 30, 'https://images.unsplash.com/photo-1580582932707-520aed937b7b', '配备创新工具，适合创新项目开发', 1, '2025-04-08 00:52:35', '2025-04-08 21:23:11');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('08:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('09:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('10:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('11:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('12:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('13:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('14:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('15:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('16:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('17:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('18:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('19:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('20:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('21:30:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');
+INSERT INTO today.time_points (point, status, created_at, updated_at) VALUES ('22:00:00', 1, '2025-04-08 17:18:09', '2025-04-08 17:18:09');

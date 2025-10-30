@@ -1,0 +1,48 @@
+server:
+  port: 9072
+spring:
+  application:
+    name: users
+
+  # 配置 MySQL 数据库连接
+  datasource:
+    url: jdbc:mysql://192.168.88.130:3306/today?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10  # 最大连接池大小
+      connection-timeout: 30000  # 连接超时时间
+      idle-timeout: 600000  # 空闲连接超时时间
+      max-lifetime: 1800000  # 最大生命周期
+
+  # 配置 Redis 连接
+  redis:
+    host: 192.168.88.130
+    port: 6379
+    password: 123456
+    timeout: 5000
+    jedis:
+      pool:
+        max-idle: 8  # 最大空闲连接数
+        min-idle: 0  # 最小空闲连接数
+        max-active: 8  # 最大活跃连接数
+        max-wait: -1  # 最大等待时间
+
+  # 配置 Jackson 日期格式
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    locale: zh_CN
+    time-zone: GMT+8
+
+  # Swagger 配置
+swagger:
+  enable: true
+
+# application.yml
+logging:
+  level:
+    org.apereo.cas.client: DEBUG      # Apereo CAS-Client 主包
+    org.springframework.security.cas: DEBUG   # Spring Security CAS integration
+
+

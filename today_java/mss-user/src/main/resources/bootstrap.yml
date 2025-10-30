@@ -1,0 +1,6 @@
+
+
+
+# 关闭swagger设置为false
+swagger:
+    enable: true

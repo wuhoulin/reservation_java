@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.skeleton.user.mapper.TimePointMapper">
+
+    <select id="findAvailableTimePoints" resultType="com.microservice.skeleton.user.domain.entity.TimePoint">
+        SELECT tp.*
+        FROM time_points tp
+        WHERE tp.status = 1
+        AND NOT EXISTS (
+        SELECT 1
+        FROM reservations r
+        WHERE r.room_id = #{roomId}
+        AND r.reservation_date = #{date}
+        AND r.time_point_id = tp.id
+        AND r.status = 1
+        )
+        ORDER BY tp.point ASC
+    </select>
+
+</mapper>

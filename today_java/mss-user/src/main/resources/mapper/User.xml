@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.microservice.skeleton.user.mapper.UserMapper">
+
+    <!-- 根据 Example 查询单个用户 -->
+    <select id="selectOneByExample" resultType="com.microservice.skeleton.user.domain.entity.User.User">
+    <![CDATA[
+        SELECT * FROM sys_user
+            <where>
+                 <if test="userExample != null">
+                 <!-- 遍历 Example 的所有查询条件 -->
+                 <foreach collection="userExample.oredCriteria" item="criterion" separator="or">
+                 <if test="criterion.criteria.size() > 0">
+                 <trim prefix="(" suffix=")" suffixOverrides="and">
+                 <!-- 遍历每个查询条件 -->
+                 <foreach collection="criterion.criteria" item="criterionItem" separator="and">
+                 <if test="criterionItem.value != null">
+            ${criterionItem.condition}
+                 <if test="criterionItem.value instanceof java.lang.String">
+            #{criterionItem.value}
+                 </if>
+                 <if test="criterionItem.value instanceof java.lang.Integer">
+            #{criterionItem.value}
+                 </if>
+                 </if>
+                 </foreach>
+                 </trim>
+                 </if>
+                 </foreach>
+                 </if>
+                 </where>
+        ]]>
+</select>
+
+</mapper>
