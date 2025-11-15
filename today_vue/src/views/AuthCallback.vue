@@ -110,43 +110,84 @@ const handleAuthCallback = async () => {
     addDebugLog(`响应对象: ${JSON.stringify(response)}`)
 
     // 关键修复：智能解析响应数据
-    // 如果response.data存在就使用response.data，否则直接使用response
     const responseData = response?.data || response
 
     addDebugLog(`解析后的响应数据: ${JSON.stringify(responseData)}`)
     addDebugLog(`响应数据success字段: ${responseData?.success}`)
     addDebugLog(`响应数据openid字段: ${responseData?.openid}`)
+    addDebugLog(`响应数据token字段: ${responseData?.token}`)
     addDebugLog('========================')
 
     // 在控制台也输出详细日志
     console.log('🔍 完整响应对象:', response)
     console.log('🔍 解析后的数据:', responseData)
-    console.log('🔍 success字段:', responseData?.success)
-    console.log('🔍 openid字段:', responseData?.openid)
+    console.log('🔍 token字段:', responseData?.token)
 
     // 检查响应数据
     if (responseData && responseData.success) {
       const openid = responseData.openid
+      const token = responseData.token
+      const userInfo = responseData.userInfo || {}
 
       addDebugLog(`成功获取openid: ${openid}`)
+      addDebugLog(`成功获取token: ${token ? '有值' : '无值'}`)
+      addDebugLog(`用户信息: ${JSON.stringify(userInfo)}`)
 
-      // 保存用户信息
+      if (!token) {
+        throw new Error('未获取到认证token')
+      }
+
+      // 存储认证信息和用户信息
+      localStorage.setItem('jwt_token', token)
       localStorage.setItem('wechat_openid', openid)
+      localStorage.setItem('user_info', JSON.stringify(userInfo))
+
+      // 设置token过期时间
+      if (responseData.expiresIn) {
+        const expireTime = Date.now() + (responseData.expiresIn * 1000)
+        localStorage.setItem('token_expire_time', expireTime.toString())
+      }
+
       localStorage.removeItem('wechat_auth_state')
+      localStorage.removeItem('wechat_auth_scope')
+
+      addDebugLog('用户信息和token已保存到本地存储')
+      addDebugLog(`用户昵称: ${userInfo.nickname || '未获取'}`)
+      addDebugLog(`用户头像: ${userInfo.headimgurl || '未获取'}`)
 
       success.value = true
       loading.value = false
 
       addDebugLog('授权成功，准备跳转...')
 
-      // 跳转到系统首页或目标页面
-      const redirect = route.query.redirect || '/community-list'
-      addDebugLog(`跳转目标: ${redirect}`)
+      // 修改跳转逻辑：优先使用redirect参数，如果没有则跳转到社区列表
+      let redirectPath = '/community-list' // 默认跳转到社区列表
+
+      // 检查是否有重定向参数
+      if (route.query.redirect) {
+        redirectPath = route.query.redirect
+        addDebugLog(`使用重定向参数: ${redirectPath}`)
+      } else {
+        addDebugLog(`使用默认跳转路径: ${redirectPath}`)
+      }
+
+      addDebugLog(`最终跳转目标: ${redirectPath}`)
+
+      // 添加更详细的跳转日志
+      addDebugLog('开始执行路由跳转...')
 
       setTimeout(() => {
-        router.push(redirect)
+        addDebugLog(`正在跳转到: ${redirectPath}`)
+        router.push(redirectPath).then(() => {
+          addDebugLog('路由跳转成功')
+        }).catch((err) => {
+          addDebugLog(`路由跳转失败: ${err.message}`)
+          console.error('路由跳转错误:', err)
+          // 如果跳转失败，尝试跳转到社区列表
+          router.push('/community-list')
+        })
       }, 1500)
-    } else {
+    }else {
       const errorMessage = responseData?.message || '获取用户信息失败'
       addDebugLog(`业务逻辑失败: ${errorMessage}`)
       throw new Error(errorMessage)
@@ -162,12 +203,8 @@ const handleAuthCallback = async () => {
     addDebugLog(`错误配置: ${JSON.stringify(err.config)}`)
     addDebugLog('===================')
 
-    // 在控制台也输出错误详情
     console.log('💥 完整错误对象:', err)
-    console.log('💥 错误名称:', err.name)
     console.log('💥 错误消息:', err.message)
-    console.log('💥 错误响应:', err.response)
-    console.log('💥 错误请求:', err.request)
 
     error.value = err.response?.data?.message || err.message || '处理授权信息失败'
     loading.value = false

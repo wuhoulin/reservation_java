@@ -11,10 +11,6 @@ import javax.servlet.http.HttpServletResponse;
 public interface UserService extends IService<User> {
 
 
-    void loginByCAS(HttpServletRequest request, HttpServletResponse response) throws Exception;
 
-
-
-    Object loginByToken(UserLoginToken userLoginVo);
 
 }

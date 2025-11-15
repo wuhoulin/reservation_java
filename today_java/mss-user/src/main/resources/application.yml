@@ -46,7 +46,12 @@ logging:
     org.springframework.security.cas: DEBUG   # Spring Security CAS integration
 
 
+jwt:
+  secret: "mySuperSecretKeyForJWTTokenGeneration2024WithAtLeast32Characters" # 至少32个字符
+  expiration: 86400000 # 24小时，单位毫秒
+
 wechat:
   appId: wxc202b4632d79f73b
   appSecret: 90c9703c42a6b1bb62ea023998f956cd
+
 

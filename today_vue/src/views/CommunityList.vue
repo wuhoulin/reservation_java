@@ -1,14 +1,6 @@
 
 <template>
   <div class="reservation-container">
-    <!-- 顶部导航栏 -->
-    <div class="header">
-      <div class="back-button">
-        <i class="icon-back"></i>
-      </div>
-      <div class="title">一站式学生社区预约</div>
-      <div class="placeholder"></div>
-    </div>
 
     <!-- 社区选择标签 -->
     <div class="community-tabs">
@@ -64,10 +56,7 @@
       </div>
     </div>
 
-    <!-- 查询预约卡片部分 -->
-    <appointment-query-card>
 
-    </appointment-query-card>
 
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-container">

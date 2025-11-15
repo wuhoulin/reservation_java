@@ -33,34 +33,6 @@ public class UserController {
     private UserService userService;
 
 
-    @RequestMapping(value = "/LoginByCAS")
-    @IgnoreSecurityCheck
-    public void loginByCAS(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        userService.loginByCAS(request, response);
-    }
 
-    @PostMapping("/LoginByToken")
-    @IgnoreSecurityCheck
-    public CommonRes loginByToken(@RequestBody @Valid UserLoginToken userLoginVo, BindingResult bindingResult) {
-        // 检查参数是否验证错误
-        if (bindingResult.hasErrors()) {
-            throw new BusinessException(BusinessError.PARAMETER_VALIDATION_ERROR,
-                    CommonUtil.processErrorString(bindingResult));
-        }
-        // 执行登录操作
-        return CommonRes.create(userService.loginByToken(userLoginVo));
-    }
-
-    @RestController
-    @RequestMapping("/cas")
-    public class CasProbeController {
-        @GetMapping("/whoami")
-        public Map<String, Object> whoami(HttpServletRequest req) {
-            return Map.of(
-                    "remoteUser", req.getRemoteUser(),
-                    "principal", req.getUserPrincipal()
-            );
-        }
-    }
 
 }

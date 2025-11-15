@@ -71,23 +71,29 @@ const startWeChatAuth = async () => {
 
   try {
     addDebugLog('请求后端生成授权URL...')
-    const response = await generateAuthUrl('/auth-callback')
+
+    // 使用snsapi_userinfo范围获取用户信息
+    const response = await generateAuthUrl('/auth-callback', 'snsapi_userinfo')
 
     addDebugLog(`后端响应状态: ${response.status}`)
     addDebugLog(`后端响应数据: ${JSON.stringify(response.data)}`)
 
     const authUrl = response.data?.authUrl || response.authUrl
     const state = response.data?.state || response.state
+    const scope = response.data?.scope || response.scope
 
     if (!authUrl) {
       throw new Error('未获取到授权URL')
     }
 
     localStorage.setItem('wechat_auth_state', state)
+    localStorage.setItem('wechat_auth_scope', scope)
+
     addDebugLog(`保存state到本地: ${state}`)
+    addDebugLog(`授权范围: ${scope}`)
     addDebugLog(`即将跳转到微信授权页面: ${authUrl}`)
 
-    // 立即跳转，不延迟
+    // 立即跳转
     window.location.href = authUrl
 
   } catch (err) {

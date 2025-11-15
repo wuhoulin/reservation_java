@@ -9,18 +9,19 @@ const request = axios.create({
     withCredentials: true,
 });
 
-
 // 请求拦截器
 request.interceptors.request.use((config) => {
-    // 获取用户信息并设置token到请求头
-    const user = localStorage.getItem("userInfo");
-    if (user) {
-        config.headers['token'] = JSON.parse(user).token;
+    const token = localStorage.getItem("jwt_token");
+    if (token) {
+        config.headers['Authorization'] = 'Bearer ' + token;
     }
 
-    // 如果需要发送表单数据或文件，则设置Content-Type为multipart/form-data
     if (config.data instanceof FormData) {
         config.headers['Content-Type'] = 'multipart/form-data';
+    }
+
+    if (token) {
+        console.log(`🔐 携带Token: ${token.substring(0, 20)}...`);
     }
 
     return config;
@@ -38,33 +39,57 @@ request.interceptors.response.use(
             if (typeof res === 'string') {
                 res = res ? JSON.parse(res) : res;
             }
+
+
             return res;
         } else {
             // 返回原始响应数据
+            console.log(`✅ 请求成功: ${response.config.url}`, response.data);
             return response;
         }
     },
     async (error) => {
-        console.log('err' + error); // for debug
 
-        // 检查是否为 401 状态码
+        // 检查是否为 401 状态码（未授权/Token失效）
         if (error.response && error.response.status === 401) {
+            console.log('🔐 Token已失效，跳转到登录页面');
+
+            // 清除本地存储的token和用户信息
+            localStorage.removeItem('jwt_token');
+            localStorage.removeItem('user_info');
+            localStorage.removeItem('token_expire_time');
+            localStorage.removeItem('wechat_openid');
+
             const appContext = getCurrentInstance();
             if (appContext) {
                 const router = appContext.appContext.config.globalProperties.$router;
                 try {
-                    // 直接跳转到登录页面
-                    await router.push('/');
-                    ElMessage.error('未登录，请先登录');
+                    // 直接跳转到微信授权页面
+                    await router.push('/wechat-auth');
+                    ElMessage.error('登录已过期，请重新授权');
                 } catch (err) {
                     console.error('页面跳转失败:', err);
+                    // 如果路由跳转失败，使用原生跳转
+                    window.location.href = '/wechat-auth';
                 }
+            } else {
+                // 如果没有Vue实例，使用原生跳转
+                window.location.href = '/wechat-auth';
             }
+        } else if (error.response && error.response.status >= 500) {
+            ElMessage.error('服务器错误，请稍后重试');
+        } else if (error.code === 'ECONNABORTED') {
+            ElMessage.error('请求超时，请检查网络连接');
+        } else if (error.response) {
+            // 其他错误状态码
+            const message = error.response.data?.message || error.response.data?.msg || '请求失败';
+            ElMessage.error(message);
+        } else {
+            ElMessage.error('网络错误，请检查网络连接');
         }
 
         return Promise.reject(error);
     }
 );
-
 
 export default request;
