@@ -6,9 +6,9 @@ spring:
 
   # 配置 MySQL 数据库连接
   datasource:
-    url: jdbc:mysql://192.168.88.130:3306/today?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
-    username: root
-    password: 123456
+    url: jdbc:mysql://43.139.169.190:3306/today?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+    username: today
+    password: whl13616963610
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10  # 最大连接池大小
@@ -18,9 +18,9 @@ spring:
 
   # 配置 Redis 连接
   redis:
-    host: 192.168.88.130
+    host: 43.139.169.190
     port: 6379
-    password: 123456
+    password: redis
     timeout: 5000
     jedis:
       pool:
@@ -45,4 +45,8 @@ logging:
     org.apereo.cas.client: DEBUG      # Apereo CAS-Client 主包
     org.springframework.security.cas: DEBUG   # Spring Security CAS integration
 
+
+wechat:
+  appId: wxc202b4632d79f73b
+  appSecret: 90c9703c42a6b1bb62ea023998f956cd
 
