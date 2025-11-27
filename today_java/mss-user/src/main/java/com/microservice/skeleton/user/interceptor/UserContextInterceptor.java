@@ -30,10 +30,5 @@ public class UserContextInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
-        // 请求完成后清除ThreadLocal上下文，防止内存泄漏
-        UserContext.clear();
-        System.out.println("拦截器清除ThreadLocal用户信息");
-    }
+
 }

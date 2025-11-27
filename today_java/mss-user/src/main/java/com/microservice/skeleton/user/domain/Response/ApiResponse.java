@@ -52,4 +52,28 @@ public class ApiResponse<T> {
         response.setErrors(errors);
         return response;
     }
+
+    // 未授权错误
+    public static <T> ApiResponse<T> unauthorized(int code, String message) {
+        ApiResponse<T> response = new ApiResponse<>();
+        response.setCode(code);
+        response.setMessage(message);
+        return response;
+    }
+
+    // 未找到资源错误
+    public static <T> ApiResponse<T> notFound(String message) {
+        ApiResponse<T> response = new ApiResponse<>();
+        response.setCode(404);
+        response.setMessage(message);
+        return response;
+    }
+
+    // 重载方法，支持自定义状态码
+    public static <T> ApiResponse<T> notFound(int code, String message) {
+        ApiResponse<T> response = new ApiResponse<>();
+        response.setCode(code);
+        response.setMessage(message);
+        return response;
+    }
 }

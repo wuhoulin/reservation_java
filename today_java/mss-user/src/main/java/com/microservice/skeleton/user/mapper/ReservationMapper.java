@@ -26,11 +26,12 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
     @Select("SELECT r.*, ra.reason " +
             "FROM reservations r " +
             "LEFT JOIN reservation_approvals ra ON r.id = ra.reservation_id " +
-            "WHERE r.student_id = #{studentId} " +
+            "WHERE r.user_id = #{userId} " +
             "AND (#{status} IS NULL OR r.status = #{status}) " +
             "ORDER BY r.reservation_date DESC, r.created_at DESC")
-    List<Reservation> findByUserId(@Param("studentId") String studentId,
+    List<Reservation> findByUserId(@Param("userId") String userId,
                                    @Param("status") Integer status);
+
 
 
 
@@ -46,4 +47,14 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
             @Param("time") LocalDateTime time
     );
 
+
+    @Select("SELECT * FROM reservation WHERE room_id = #{roomId} AND reservation_date = #{date} " +
+            "AND status != -1 " +
+            "AND start_time_id < #{endTimeId} AND end_time_id > #{startTimeId} " +
+            "FOR UPDATE")
+    List<Reservation> findOverlappingReservationsForUpdate(
+            @Param("roomId") Integer roomId,
+            @Param("date") LocalDate date,
+            @Param("startTimeId") Integer startTimeId,
+            @Param("endTimeId") Integer endTimeId);
 }

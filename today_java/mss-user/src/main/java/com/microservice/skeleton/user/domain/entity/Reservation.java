@@ -53,9 +53,6 @@ public class Reservation {
     @TableField("user_name")
     private String userName;
 
-    @ApiModelProperty("单点登录 CN")
-    @TableField("user_cn")
-    private String userCn;
 
     @ApiModelProperty("所属学院")
     @TableField("college")
@@ -77,9 +74,9 @@ public class Reservation {
     @TableField("teacher_contact")
     private String teacherContact;
 
-    @ApiModelProperty("单点登录 用户唯一id")
-    @TableField("student_id")
-    private String studentId;
+    @ApiModelProperty("申请人用户ID（微信授权openID）")
+    @TableField("user_id")  // 修改：使用 user_id 而不是 student_id
+    private String userId;
 
     @ApiModelProperty("其他需求（如有）")
     @TableField("other_requirements")
@@ -104,6 +101,4 @@ public class Reservation {
     @ApiModelProperty("更新时间")
     @TableField(value = "updated_at", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
-
-
 }

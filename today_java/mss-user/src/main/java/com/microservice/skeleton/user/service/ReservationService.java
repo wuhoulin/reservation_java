@@ -9,7 +9,6 @@ import com.microservice.skeleton.user.domain.Response.RoomReservationStatusRespo
 import com.microservice.skeleton.user.domain.entity.Reservation;
 import com.microservice.skeleton.user.domain.vo.ReservationVO;
 
-
 import java.time.LocalDate;
 import java.util.List;
 
@@ -25,4 +24,10 @@ public interface ReservationService extends IService<Reservation> {
 
     List<ReservationVO> getLatestReservations(String userId);
 
+    /**
+     * 重新提交被退回的预约
+     * @param reservationId 预约ID
+     * @param userId 用户ID
+     */
+    void resubmitReservation(Integer reservationId, String userId);
 }

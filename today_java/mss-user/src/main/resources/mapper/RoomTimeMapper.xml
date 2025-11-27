@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.skeleton.user.mapper.RoomTimeMapper">
+
+    <!-- 基础字段列表 -->
+    <sql id="Base_Column_List">
+        id,
+        room_id AS roomId,
+        time_point AS timePoint,
+        status AS status,
+        created_at AS createdAt,
+        updated_at AS updatedAt
+    </sql>
+    <!-- 根据教室ID查询所有时间段 -->
+    <select id="selectByRoomId"
+            parameterType="java.lang.Integer"
+    resultType="com.microservice.skeleton.user.domain.entity.RoomTime">
+    SELECT
+    <include refid="Base_Column_List"/>
+    FROM room_time
+    WHERE room_id = #{roomId}
+    ORDER BY time_point ASC
+</select>
+
+</mapper>

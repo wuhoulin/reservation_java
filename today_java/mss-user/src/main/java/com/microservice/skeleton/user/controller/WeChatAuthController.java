@@ -2,8 +2,12 @@ package com.microservice.skeleton.user.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.microservice.skeleton.user.domain.entity.User.User;
+import com.microservice.skeleton.user.service.UserService;
+import com.microservice.skeleton.user.service.UserWechatService;
 import com.microservice.skeleton.user.util.JwtTokenUtil;
 import com.microservice.skeleton.user.util.UserContext;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +23,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/wechat")
+@Slf4j
 public class WeChatAuthController {
 
     @Value("${wechat.appId}")
@@ -30,6 +35,11 @@ public class WeChatAuthController {
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
 
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private UserWechatService userWechatService;
     /**
      * 生成微信授权URL
      */
@@ -82,11 +92,6 @@ public class WeChatAuthController {
         String code = request.getCode();
         String state = request.getState();
 
-        System.out.println("=== 完整请求体调试 ===");
-        System.out.println("接收到的request: " + request);
-        System.out.println("接收到的code: " + code);
-        System.out.println("接收到的state: " + state);
-
         if (code == null || code.trim().isEmpty()) {
             System.out.println("错误: code参数为空或为空字符串");
             throw new RuntimeException("code参数不能为空");
@@ -111,6 +116,8 @@ public class WeChatAuthController {
             if (tokenData.containsKey("openid")) {
                 String openid = (String) tokenData.get("openid");
                 String accessToken = (String) tokenData.get("access_token");
+                String refreshToken = (String) tokenData.get("refresh_token");
+                Integer expiresIn = (Integer) tokenData.get("expires_in");
                 String scope = (String) tokenData.get("scope");
 
                 System.out.println("成功获取openid: " + openid);
@@ -120,8 +127,12 @@ public class WeChatAuthController {
                 WeChatUserInfo userInfo = new WeChatUserInfo();
                 userInfo.setOpenid(openid);
                 userInfo.setAccessToken(accessToken);
+                userInfo.setRefreshToken(refreshToken);
+                userInfo.setExpiresIn(expiresIn);
                 userInfo.setScope(scope);
                 userInfo.setAuthTime(System.currentTimeMillis());
+
+                User systemUser = null;
 
                 // 第二步：如果scope包含snsapi_userinfo，则获取用户详细信息
                 if ("snsapi_userinfo".equals(scope)) {
@@ -151,15 +162,27 @@ public class WeChatAuthController {
                             System.out.println("成功获取用户详细信息:");
                             System.out.println("昵称: " + userInfo.getNickname());
                             System.out.println("头像: " + userInfo.getHeadimgurl());
+
+                            // 关键：自动创建或更新系统用户和微信用户关联
+                            systemUser = userService.createOrUpdateWechatUser(userInfo);
+                            userWechatService.createOrUpdateWechatUser(systemUser.getUserId(), userInfo);
+
+                            log.info("微信用户授权成功: userId={}, openid={}, nickname={}",
+                                    systemUser.getUserId(), openid, userInfo.getNickname());
                         } else {
                             System.out.println("获取用户详细信息失败: " + userInfoData.get("errmsg"));
+                            // 即使没有获取到详细信息，也尝试创建基础用户
+                            systemUser = userService.createOrUpdateWechatUser(userInfo);
                         }
                     } catch (Exception e) {
                         System.out.println("获取用户详细信息异常: " + e.getMessage());
-                        // 不抛出异常，因为基础授权已经成功
+                        // 异常情况下也尝试创建基础用户
+                        systemUser = userService.createOrUpdateWechatUser(userInfo);
                     }
                 } else {
                     System.out.println("当前授权范围: " + scope + "，无法获取用户详细信息");
+                    // 静默授权情况下创建基础用户
+                    systemUser = userService.createOrUpdateWechatUser(userInfo);
                 }
 
                 // 生成JWT token
@@ -169,6 +192,10 @@ public class WeChatAuthController {
                 claims.put("scope", scope);
                 claims.put("nickname", userInfo.getNickname());
                 claims.put("headimgurl", userInfo.getHeadimgurl());
+                if (systemUser != null) {
+                    claims.put("userId", systemUser.getUserId());
+                    claims.put("userName", systemUser.getUserName());
+                }
 
                 String jwtToken = jwtTokenUtil.generateToken(openid, claims);
                 System.out.println("生成的JWT Token: " + jwtToken);
@@ -180,9 +207,6 @@ public class WeChatAuthController {
                 // 设置到ThreadLocal
                 UserContext.setCurrentUser(userInfo);
 
-                // 保存用户信息到数据库
-                saveUserInfo(userInfo);
-
                 // 返回统一格式的响应
                 Map<String, Object> result = new HashMap<>();
                 result.put("success", true);
@@ -193,6 +217,9 @@ public class WeChatAuthController {
                 result.put("tokenType", "Bearer");
                 result.put("expiresIn", jwtTokenUtil.getRemainingTime(jwtToken));
                 result.put("userInfo", userInfo);
+                if (systemUser != null) {
+                    result.put("systemUser", systemUser);
+                }
                 result.put("timestamp", System.currentTimeMillis());
 
                 System.out.println("返回给前端的完整结果: " + result);
@@ -209,7 +236,6 @@ public class WeChatAuthController {
             throw new RuntimeException("解析微信响应失败", e);
         }
     }
-
     /**
      * 刷新token接口
      */

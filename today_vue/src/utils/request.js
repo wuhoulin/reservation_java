@@ -5,6 +5,7 @@ import { getCurrentInstance } from 'vue';
 // 创建一个axios实例
 const request = axios.create({
     baseURL: 'http://ndnu-yuyue.xyz:9072',
+    // baseURL: 'http://localhost:9072',
     timeout: 5000,
     withCredentials: true,
 });

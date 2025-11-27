@@ -62,6 +62,10 @@ const startWeChatAuth = async () => {
   addDebugLog(`当前路由: ${route.path}`)
   addDebugLog(`路由参数: ${JSON.stringify(route.query)}`)
 
+  // 再次确认清除旧缓存（双重保障）
+  localStorage.removeItem('wechat_auth_state')
+  localStorage.removeItem('wechat_auth_scope')
+
   if (!isWeChatBrowser()) {
     error.value = '请在微信中打开此链接'
     loading.value = false
@@ -86,6 +90,12 @@ const startWeChatAuth = async () => {
       throw new Error('未获取到授权URL')
     }
 
+    // 关键校验：确保是微信官方授权链接（防止后端返回错误URL）
+    if (!authUrl.includes('open.weixin.qq.com/connect/oauth2')) {
+      throw new Error(`授权URL非法，必须是微信官方链接：${authUrl}`)
+    }
+
+    // 存储授权状态（用于回调页校验）
     localStorage.setItem('wechat_auth_state', state)
     localStorage.setItem('wechat_auth_scope', scope)
 
@@ -93,12 +103,14 @@ const startWeChatAuth = async () => {
     addDebugLog(`授权范围: ${scope}`)
     addDebugLog(`即将跳转到微信授权页面: ${authUrl}`)
 
-    // 立即跳转
-    window.location.href = authUrl
+    // 延迟跳转（避免浏览器拦截，同时让用户看到授权页提示）
+    setTimeout(() => {
+      window.location.href = authUrl // 跳转到微信官方授权页
+    }, 800) // 800ms延迟，足够用户看到"授权处理中"提示
 
   } catch (err) {
     addDebugLog(`获取授权URL失败: ${err.message}`)
-    addDebugLog(`错误详情: ${JSON.stringify(err.response?.data)}`)
+    addDebugLog(`错误详情: ${JSON.stringify(err.response?.data || err.stack)}`)
     error.value = err.message || '授权失败，请重试'
     loading.value = false
   }
@@ -113,6 +125,14 @@ const retryAuth = () => {
 }
 
 onMounted(() => {
+  // 初始化时清除所有相关旧缓存（核心修复：避免残留参数干扰流程）
+  localStorage.removeItem('wechat_auth_state')
+  localStorage.removeItem('wechat_auth_scope')
+  localStorage.removeItem('wechat_openid')
+  localStorage.removeItem('jwt_token')
+  localStorage.removeItem('user_info')
+  localStorage.removeItem('token_expire_time')
+
   addDebugLog('页面加载完成，开始授权流程')
   startWeChatAuth()
 })

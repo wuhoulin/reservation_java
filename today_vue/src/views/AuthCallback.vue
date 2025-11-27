@@ -5,18 +5,26 @@
       <p>正在获取用户信息...</p>
     </div>
 
-    <div v-else-if="success" class="success-message">
-      <div class="success-icon">✓</div>
-      <h3>授权成功！</h3>
-      <p>正在跳转到预约系统...</p>
-    </div>
+    <div v-else-if="success" class="success-card">
+      <div class="success-icon-wrapper">
+        <span class="success-icon">👋</span>
+        <div class="success-flare">💫</div>
+      </div>
 
+      <h3 class="welcome-title">欢迎您，</h3>
+      <h2 class="user-nickname">{{ userInfo.nickname || '新用户' }}</h2>
+
+      <p class="redirect-text">授权成功，系统正在为您准备资源，即将跳转...</p>
+
+      <div class="progress-bar-wrapper">
+        <div class="progress-bar"></div>
+      </div>
+    </div>
     <div v-else class="error-message">
       <div class="error-icon">✗</div>
       <h3>授权失败</h3>
       <p>{{ error }}</p>
 
-      <!-- 添加详细的调试信息 -->
       <div v-if="showDebug" class="debug-info">
         <h4>调试信息</h4>
         <p><strong>当前URL:</strong> {{ currentUrl }}</p>
@@ -55,6 +63,7 @@ const debugCode = ref('')
 const debugState = ref('')
 const storedState = ref('')
 const debugLog = ref('')
+const userInfo = ref({}) // 🌟 用于存储和显示用户信息
 
 // 添加调试日志
 const addDebugLog = (message) => {
@@ -127,11 +136,14 @@ const handleAuthCallback = async () => {
     if (responseData && responseData.success) {
       const openid = responseData.openid
       const token = responseData.token
-      const userInfo = responseData.userInfo || {}
+      const fetchedUserInfo = responseData.userInfo || {}
+
+      // 🌟 更新 userInfo ref
+      userInfo.value = fetchedUserInfo
 
       addDebugLog(`成功获取openid: ${openid}`)
       addDebugLog(`成功获取token: ${token ? '有值' : '无值'}`)
-      addDebugLog(`用户信息: ${JSON.stringify(userInfo)}`)
+      addDebugLog(`用户信息: ${JSON.stringify(fetchedUserInfo)}`)
 
       if (!token) {
         throw new Error('未获取到认证token')
@@ -140,7 +152,7 @@ const handleAuthCallback = async () => {
       // 存储认证信息和用户信息
       localStorage.setItem('jwt_token', token)
       localStorage.setItem('wechat_openid', openid)
-      localStorage.setItem('user_info', JSON.stringify(userInfo))
+      localStorage.setItem('user_info', JSON.stringify(fetchedUserInfo))
 
       // 设置token过期时间
       if (responseData.expiresIn) {
@@ -152,8 +164,8 @@ const handleAuthCallback = async () => {
       localStorage.removeItem('wechat_auth_scope')
 
       addDebugLog('用户信息和token已保存到本地存储')
-      addDebugLog(`用户昵称: ${userInfo.nickname || '未获取'}`)
-      addDebugLog(`用户头像: ${userInfo.headimgurl || '未获取'}`)
+      addDebugLog(`用户昵称: ${fetchedUserInfo.nickname || '未获取'}`)
+      addDebugLog(`用户头像: ${fetchedUserInfo.headimgurl || '未获取'}`)
 
       success.value = true
       loading.value = false
@@ -229,21 +241,125 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: #f5f5f5;
+  background: #f0f2f5; /* 略微深一点的背景 */
   padding: 20px;
 }
 
+/* 统一卡片样式 */
 .loading-spinner,
-.success-message,
+.success-card, /* 更改类名以应用新样式 */
 .error-message {
   background: white;
   padding: 40px;
-  border-radius: 10px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
   text-align: center;
-  max-width: 500px;
+  max-width: 400px;
   width: 100%;
+  transition: all 0.3s ease;
 }
+
+/* -------------------- 🌟 成功页面样式 🌟 -------------------- */
+.success-card {
+  padding: 50px 30px;
+  border: 1px solid #e0e0e0;
+}
+
+.success-icon-wrapper {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 30px;
+  background-color: #e6fffb;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 4px solid #87e8de;
+}
+
+.success-icon {
+  font-size: 36px;
+  line-height: 1;
+  color: #008764; /* 深绿色 */
+  animation: bounce 0.6s ease-out;
+}
+
+.success-flare {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 20px;
+  animation: rotateScale 4s infinite linear;
+  color: #ffc53d;
+}
+
+.welcome-title {
+  font-size: 20px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.user-nickname {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 25px;
+
+  /* 渐变色字体 */
+  background: linear-gradient(45deg, #07c160, #1677ff, #ff8c00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% auto;
+  animation: flowText 4s linear infinite;
+}
+
+.redirect-text {
+  color: #777;
+  font-size: 14px;
+  margin-bottom: 30px;
+}
+
+.progress-bar-wrapper {
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #07c160, #3498db);
+  animation: progressLoad 1.5s linear forwards;
+}
+
+/* -------------------- 动画 -------------------- */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes rotateScale {
+  0% { transform: rotate(0deg) scale(0.8); opacity: 0.5; }
+  50% { transform: rotate(180deg) scale(1.2); opacity: 1; }
+  100% { transform: rotate(360deg) scale(0.8); opacity: 0.5; }
+}
+
+@keyframes flowText {
+  to { background-position: -200% center; }
+}
+
+@keyframes progressLoad {
+  0% { width: 0%; }
+  100% { width: 100%; }
+}
+/* -------------------- 错误/加载/调试信息样式保持不变 -------------------- */
 
 .spinner {
   border: 4px solid #f3f3f3;
@@ -251,26 +367,12 @@ onMounted(() => {
   border-radius: 50%;
   width: 40px;
   height: 40px;
-  animation: spin 1s linear infinite;
   margin: 0 auto 20px;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.success-icon,
 .error-icon {
   font-size: 48px;
   margin-bottom: 20px;
-}
-
-.success-icon {
-  color: #07c160;
-}
-
-.error-icon {
   color: #e74c3c;
 }
 
@@ -317,6 +419,7 @@ onMounted(() => {
   border-radius: 5px;
   cursor: pointer;
   font-size: 14px;
+  transition: background 0.2s;
 }
 
 .retry-btn:hover {
@@ -331,6 +434,7 @@ onMounted(() => {
   border-radius: 5px;
   cursor: pointer;
   font-size: 14px;
+  transition: background 0.2s;
 }
 
 .debug-btn:hover {

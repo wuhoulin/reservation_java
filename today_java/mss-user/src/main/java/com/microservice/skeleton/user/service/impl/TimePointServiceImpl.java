@@ -10,6 +10,7 @@ import com.microservice.skeleton.user.domain.entity.Reservation;
 import com.microservice.skeleton.user.domain.entity.TimePoint;
 import com.microservice.skeleton.user.domain.vo.TimePointVO;
 import com.microservice.skeleton.user.mapper.ReservationMapper;
+import com.microservice.skeleton.user.mapper.RoomTimeMapper;
 import com.microservice.skeleton.user.mapper.TimePointMapper;
 import com.microservice.skeleton.user.service.RoomService;
 import com.microservice.skeleton.user.service.TimePointService;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -32,6 +34,9 @@ public class TimePointServiceImpl extends ServiceImpl<TimePointMapper, TimePoint
 
     @Autowired
     private ReservationMapper reservationMapper;
+
+    @Autowired
+    private RoomTimeMapper roomTimeMapper;
 
     @Override
     @Transactional
@@ -148,33 +153,44 @@ public class TimePointServiceImpl extends ServiceImpl<TimePointMapper, TimePoint
 
     @Override
     public List<TimePointVO> getAvailableTimePointsForRoom(Integer roomId, LocalDate date) {
-        // 检查教室是否存在
+        // 检查教室是否存在 (保留)
         if (roomService.getById(roomId) == null) {
             throw new BusinessException("教室不存在");
         }
 
-        // 获取该教室在指定日期的所有预约记录
+
+        // 状态为 0-待审核、1-已通过、4-已完成 的预约都视为占用
         List<Reservation> reservations = reservationMapper.findByRoomIdAndDate(roomId, date);
 
-        // 获取所有时间点
+        // 获取所有时间点（状态为1的有效时间点
         List<TimePoint> allTimePoints = list(
                 new QueryWrapper<TimePoint>()
                         .eq("status", 1)
                         .orderByAsc("point")
         );
 
-        // 找出已被预约的时间点ID
+        // 3. 找出已被预约的时间点ID (保留)
         Set<Integer> reservedTimePointIds = reservations.stream()
                 .flatMap(r -> Stream.of(r.getStartTimeId(), r.getEndTimeId()))
                 .collect(Collectors.toSet());
 
-        // 过滤出可用时间点
+
+        // 调用 RoomTimeMapper 查询被禁用的时间点 ID 列表
+        List<Integer> roomDisabledTimePointIds = roomTimeMapper.findUnavailableTimePointIdsByRoomId(roomId);
+
+        // 将其转为 Set 以提高查询效率
+        Set<Integer> roomDisabledSet = new HashSet<>(roomDisabledTimePointIds);
+
+
         return allTimePoints.stream()
-                .filter(tp -> !reservedTimePointIds.contains(tp.getId()))
                 .map(tp -> {
                     TimePointVO vo = new TimePointVO();
                     BeanUtils.copyProperties(tp, vo);
-                    vo.setAvailable(true); // 这些是未被预约的时间点
+
+                    boolean isUnavailable = reservedTimePointIds.contains(tp.getId()) ||
+                            roomDisabledSet.contains(tp.getId());
+
+                    vo.setAvailable(!isUnavailable);
                     return vo;
                 })
                 .collect(Collectors.toList());

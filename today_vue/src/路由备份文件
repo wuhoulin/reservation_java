@@ -12,7 +12,7 @@ import UserProfile from "@/views/UserProfile.vue";
 const routes = [
     {
         path: "/",
-        redirect: "/community-list" // 根路径直接跳社区列表，不进授权页
+        redirect: "/wechat-auth"
     },
     {
         path: "/",
@@ -74,53 +74,49 @@ const router = createRouter({
     routes
 });
 
-// ====================== 调试模式核心配置 ======================
-const DEBUG_MODE = true; // 调试时设为true（跳过授权），后续恢复设为false
-// 从后端日志获取的真实有效数据（直接复用，接口能正常授权）
-const MOCK_OPENID = "oAnc9vgK495dktuO_F43WR3fkrzg";
-const MOCK_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJvcGVuaWQiOiJvQW5jOXZnSzQ5NWRrdHVPX0Y0M1dSM2ZrcnpnIiwic2NvcGUiOiJzbnNhcGlfdXNlcmluZm8iLCJuaWNrbmFtZSI6IsOjwoDCgiIsImhlYWRpbWd1cmwiOiJodHRwczovL3RoaXJkd3gucWxvZ28uY24vbW1vcGVuL3ZpXzMyL2IzQmNFNXlYQTA2OWRYdW43TnRGYXpiRFdVeDVxTzJRa2szcVltYWszNlRtaWJjYUNqUk5qTlJVYnlQNkpuaGlicTB5NGNzeG56c2JsMjRvNDNCb29acUEvMTMyIiwiYXV0aFRpbWUiOjE3NjM4ODY4NTUwMDMsInVzZXJOYW1lIjoi5ZC05Y6a6ZyWIiwidXNlcklkIjoxMDAsInN1YiI6Im9BbmM5dmdLNDk1ZGt0dU9fRjQzV1IzZmtyemciLCJpYXQiOjE3NjM4ODY4NTUsImV4cCI6MTg1MDI4Njg1NX0.wMG50taosCDpJ_QMhwrv1Kz0lH8-B1GDQ2WfWL4xWgI";
-// ==============================================================
-
 router.beforeEach((to, from, next) => {
     console.log('🚀 路由守卫: ', {
         from: from.path,
         to: to.path,
-        requiresAuth: to.matched.some(record => record.meta.requiresAuth),
-        debugMode: DEBUG_MODE
+        requiresAuth: to.matched.some(record => record.meta.requiresAuth)
     });
 
     // 检查目标路由是否需要登录
     if (to.matched.some(record => record.meta.requiresAuth)) {
-        // 调试模式：自动写入模拟用户数据，直接放行
-        if (DEBUG_MODE) {
-            console.log('🔧 调试模式：跳过授权，自动写入用户数据');
-            // 写入模拟数据到本地存储（接口请求会自动携带）
-            localStorage.setItem('wechat_openid', MOCK_OPENID);
-            localStorage.setItem('jwt_token', MOCK_TOKEN);
-            localStorage.setItem('user_info', JSON.stringify({
-                openid: MOCK_OPENID,
-                nickname: "测试用户",
-                userName: "吴厚霖",
-                college: "信息工程学院",
-                major: "计算机科学与技术",
-                phonenumber: "13800138000",
-                headimgurl: "https://thirdwx.qlogo.cn/mmopen/vi_32/b3BcE5yXA069dXun7NtFazbDWUx5qO2Qkk3qYmak36TmibcaCjRNjNRUbyP6Jnhibq0y4csxnzsbl24o43BooZqA/132"
-            }));
-            next(); // 直接进入目标页面，不跳授权
-            return;
-        }
-
-        // 非调试模式：保留原授权逻辑（后续恢复时自动生效）
         const openid = localStorage.getItem('wechat_openid');
         const token = localStorage.getItem('jwt_token');
+
+        console.log('🔐 登录状态检查:', {
+            openid: openid ? '有' : '无',
+            token: token ? '有' : '无'
+        });
+
         if (!openid || !token) {
-            next({ path: '/wechat-auth', query: { redirect: to.fullPath } });
+            console.log('❌ 未登录，跳转到授权页面');
+            next({
+                path: '/wechat-auth',
+                // 携带当前需要访问的路径，授权后跳回
+                query: { redirect: to.fullPath }
+            });
         } else {
+            console.log('✅ 已登录，允许访问');
             next();
         }
     } else {
-        // 公开路由（如授权页），直接放行
-        next();
+        // 非受保护路由（如 /wechat-auth、/auth-callback）
+        const openid = localStorage.getItem('wechat_openid');
+        const token = localStorage.getItem('jwt_token');
+
+        // 关键修改2：如果已登录，且当前要去授权页，自动跳转到默认页（/community-list）
+        if (openid && token && to.path === '/wechat-auth') {
+            console.log('✅ 已登录，跳过授权页，跳转到社区列表');
+            // 优先跳回之前携带的 redirect 路径，没有则跳默认页
+            const redirectPath = to.query.redirect || '/community-list';
+            next(redirectPath);
+        } else {
+            console.log('🌐 公开路由，允许访问');
+            next();
+        }
     }
 });
 

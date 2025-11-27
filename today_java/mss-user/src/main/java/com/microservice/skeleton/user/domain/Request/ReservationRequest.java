@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
-
 import javax.validation.constraints.*;
 import java.time.LocalDate;
 import java.util.List;
@@ -12,10 +11,6 @@ import java.util.List;
 @Data
 @ApiModel(description = "预约信息请求对象")
 public class ReservationRequest {
-
-    @ApiModelProperty("单点登录 用户唯一id")
-    @TableField("student_id")
-    private String studentId;
 
     @ApiModelProperty(value = "预约教室ID", required = true, example = "1")
     @NotNull(message = "教室ID不能为空")
@@ -26,9 +21,10 @@ public class ReservationRequest {
     @FutureOrPresent(message = "预约日期不能是过去日期")
     private LocalDate reservationDate;
 
-    @ApiModelProperty(value = "选择的时间点ID列表（必须2个）", required = true, example = "[1, 2]")
+    // 核心修改：取消max=2，允许接收多个时间点ID（开始到结束的所有）
+    @ApiModelProperty(value = "选择的时间点ID列表（开始到结束的所有时间点）", required = true, example = "[1,2,3,4]")
     @NotNull(message = "时间点不能为空")
-    @Size(min = 2, max = 2, message = "必须选择2个时间点")
+    @Size(min = 2, message = "至少选择2个时间点（开始和结束）") // 只保留min限制
     private List<Integer> timePointIds;
 
     @ApiModelProperty(value = "活动名称", required = true, example = "学生会会议")
@@ -81,6 +77,4 @@ public class ReservationRequest {
     @Max(value = 200, message = "参与人数不能超过200")
     private Integer attendees;
 
-    @ApiModelProperty(value = "用户 CN（单点登录标识）", example = "zhangsan001") // ✅ 新增字段
-    private String userCn;
 }
