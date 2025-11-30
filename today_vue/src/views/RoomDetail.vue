@@ -8,7 +8,14 @@
         </svg>
       </div>
       <div class="title">教室详情</div>
-      <div class="placeholder"></div>
+      <div class="favorite-button" @click="toggleFavorite">
+        <svg v-if="isFavorited" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+        </svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+        </svg>
+      </div>
     </div>
 
     <!-- 加载状态 -->
@@ -32,7 +39,18 @@
 
       <!-- 教室信息卡片 -->
       <div class="room-info-card">
-        <h1 class="room-name">{{ room.name }}</h1>
+        <div class="room-header">
+          <h1 class="room-name">{{ room.name }}</h1>
+          <div class="favorite-indicator" :class="{ favorited: isFavorited }" @click="toggleFavorite">
+            <svg v-if="isFavorited" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+          </div>
+        </div>
+
         <div class="room-meta">
           <div class="meta-item">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -75,8 +93,12 @@
                   v-for="(date, index) in availableDates"
                   :key="index"
                   class="date-item"
-                  :class="{ active: selectedDateIndex === index }"
+                  :class="{
+                    active: selectedDateIndex === index,
+                    disabled: isDateDisabled(date) // 新增：禁用过去的日期
+                  }"
                   @click="selectDate(index)"
+                  :style="{ cursor: isDateDisabled(date) ? 'not-allowed' : 'pointer' }"
               >
                 <div class="date-weekday">{{ formatWeekday(date) }}</div>
                 <div class="date-day">{{ formatDay(date) }}</div>
@@ -108,12 +130,13 @@
                   'start-point': timePoint.id === selectedStartTimeId,
                   'end-point': timePoint.id === selectedEndTimeId,
                   'middle-point': isMiddlePoint(timePoint.id),
-                  'disabled': !(room.status === true || room.status === 1) || !timePoint.available || isIntervalContainsReserved(timePoint.id)
+                  'disabled': !(room.status === true || room.status === 1) || !timePoint.available || isIntervalContainsReserved(timePoint.id) || isTimePointDisabled(timePoint)
                 }"
                   @click="handleTimePointClick(timePoint.id)"
               >
                 <span class="time-text">{{ formatTimePoint(timePoint.point) }}</span>
                 <span v-if="!timePoint.available" class="time-badge reserved">已预约</span>
+                <span v-else-if="isTimePointDisabled(timePoint)" class="time-badge reserved">已过期</span> <!-- 新增：已过期标签 -->
                 <span v-else-if="timePoint.id === selectedStartTimeId" class="time-badge start">开始</span>
                 <span v-else-if="timePoint.id === selectedEndTimeId" class="time-badge end">结束</span>
                 <span v-else-if="isMiddlePoint(timePoint.id)" class="time-badge middle">选中</span>
@@ -214,6 +237,7 @@ import { getUserProfile } from "@/api/user.js";
 import RulesModal from "@/components/RulesModal.vue";
 import BookingForm from "@/components/booking-form.vue";
 import { createReservation, cancelReservation } from '@/api/roomDetail.js';
+import { addFavorite, removeFavorite, checkFavorite } from '@/api/favorite.js';
 import { ElMessage } from 'element-plus';
 
 // 从localStorage读取用户信息
@@ -239,6 +263,10 @@ const selectedDateIndex = ref(0);
 const selectedStartTimeId = ref(null);
 const selectedEndTimeId = ref(null);
 const availableTimePointsForRoom = ref([]);
+
+// 收藏状态
+const isFavorited = ref(false);
+const favoriteLoading = ref(false);
 
 // 其他状态
 const termsModalVisible = ref(false);
@@ -268,10 +296,11 @@ const allTimePoints = computed(() => {
       .sort((a, b) => a.point.localeCompare(b.point));
 });
 
-// 未来七天日期
+// 未来七天日期（过滤掉过去的日期）
 const availableDates = computed(() => {
   const dates = [];
   const today = new Date();
+  // 只显示今天及未来6天（共7天）
   for (let i = 0; i < 7; i++) {
     const date = new Date(
         today.getFullYear(),
@@ -308,15 +337,19 @@ const canBook = computed(() => {
   const isRoomAvailable = room.value.status === true || room.value.status === 1;
   const hasCompleteInterval = !!selectedStartTimeId.value && !!selectedEndTimeId.value;
   const isFormValidated = isFormValid.value;
+  const isTimeValid = isSelectedTimeValid(); // 新增：校验选中的时间是否有效
 
-  return isLogin && isRoomAvailable && hasCompleteInterval && isFormValidated;
+  return isLogin && isRoomAvailable && hasCompleteInterval && isFormValidated && isTimeValid;
 });
 
 // 初始化加载
 onMounted(async () => {
   await fetchUserProfile();
   await loadRoomDetail();
+  // 初始化时自动选中第一个可用日期（跳过过去的日期）
+  initSelectedDate();
   await loadAvailableTimePointsForRoom();
+  await checkFavoriteStatus();
 
   if (dateSelector.value) {
     const selectedElement = dateSelector.value.children[selectedDateIndex.value];
@@ -346,6 +379,52 @@ watch(selectedDateIndex, async () => {
 watch([selectedStartTimeId, selectedEndTimeId], () => {
   bookingFormRef.value?.checkFormValidity();
 });
+
+// 检查收藏状态
+const checkFavoriteStatus = async () => {
+  if (!currentUser.value.id) return;
+
+  try {
+    const response = await checkFavorite(roomId.value);
+    if (response.code === 200) {
+      isFavorited.value = response.data;
+    }
+  } catch (error) {
+    console.error('检查收藏状态失败:', error);
+  }
+};
+
+// 切换收藏状态
+const toggleFavorite = async () => {
+  if (!currentUser.value.id) {
+    ElMessage.warning('请先登录后再收藏');
+    router.push('/wechat-auth');
+    return;
+  }
+
+  if (favoriteLoading.value) return;
+
+  try {
+    favoriteLoading.value = true;
+
+    if (isFavorited.value) {
+      // 取消收藏
+      await removeFavorite(roomId.value);
+      isFavorited.value = false;
+      ElMessage.success('已取消收藏');
+    } else {
+      // 添加收藏
+      await addFavorite({ roomId: Number(roomId.value) });
+      isFavorited.value = true;
+      ElMessage.success('收藏成功');
+    }
+  } catch (error) {
+    console.error('收藏操作失败:', error);
+    ElMessage.error(isFavorited.value ? '取消收藏失败' : '收藏失败');
+  } finally {
+    favoriteLoading.value = false;
+  }
+};
 
 // 获取用户信息填充表单
 const fetchUserProfile = async () => {
@@ -415,9 +494,61 @@ const loadAvailableTimePointsForRoom = async () => {
   }
 };
 
-// 日期选择
+// 初始化选中日期（跳过过去的日期）
+const initSelectedDate = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // 清除时分秒，只比较日期
+
+  // 找到第一个不是过去的日期（默认是今天）
+  for (let i = 0; i < availableDates.value.length; i++) {
+    const date = new Date(availableDates.value[i]);
+    date.setHours(0, 0, 0, 0);
+    if (date >= today) {
+      selectedDateIndex.value = i;
+      break;
+    }
+  }
+};
+
+// 日期选择（过滤掉过去的日期）
 const selectDate = (index) => {
+  const selectedDate = availableDates.value[index];
+  if (isDateDisabled(selectedDate)) {
+    ElMessage.warning('不能选择过去的日期');
+    return;
+  }
   selectedDateIndex.value = index;
+};
+
+// 判断日期是否已过期（过去的日期）
+const isDateDisabled = (date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // 清除时分秒，只比较日期
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0);
+  return targetDate < today;
+};
+
+// 判断时间点是否已过期
+const isTimePointDisabled = (timePoint) => {
+  // 如果选中的是今天，才需要判断时间点是否已过
+  const selectedDate = availableDates.value[selectedDateIndex.value];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const targetDate = new Date(selectedDate);
+  targetDate.setHours(0, 0, 0, 0);
+
+  // 不是今天，直接返回false（不过期）
+  if (targetDate > today) return false;
+
+  // 是今天，判断时间点是否已过当前时间
+  const [hours, minutes] = timePoint.point.split(':').map(Number);
+  const currentTime = new Date();
+  const timePointTime = new Date();
+  timePointTime.setHours(hours, minutes, 0, 0);
+
+  // 时间点已过当前时间，返回true（过期）
+  return timePointTime < currentTime;
 };
 
 // 时间点点击处理（修复核心逻辑）
@@ -428,8 +559,8 @@ const handleTimePointClick = (timePointId) => {
   // 修复：从room.value中获取status，判断教室是否可预约
   const isRoomAvailable = room.value.status === true || room.value.status === 1;
 
-  // 不可用（已预约）或教室不可预约时，不允许点击
-  if (!timePoint || !timePoint.available || !isRoomAvailable) return;
+  // 不可用（已预约/已过期）或教室不可预约时，不允许点击
+  if (!timePoint || !timePoint.available || !isRoomAvailable || isTimePointDisabled(timePoint)) return;
 
   if (selectedStartTimeId.value === id && !selectedEndTimeId.value) {
     selectedStartTimeId.value = null;
@@ -458,6 +589,33 @@ const handleTimePointClick = (timePointId) => {
     }
     return;
   }
+};
+
+// 校验选中的时间区间是否有效（不早于当前时间）
+const isSelectedTimeValid = () => {
+  if (!selectedStartTimeId.value || !selectedEndTimeId.value) return false;
+
+  const selectedDate = availableDates.value[selectedDateIndex.value];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const targetDate = new Date(selectedDate);
+  targetDate.setHours(0, 0, 0, 0);
+
+  // 选中的是未来日期，直接有效
+  if (targetDate > today) return true;
+
+  // 选中的是今天，需要判断开始时间是否晚于当前时间
+  const startTimePoint = allTimePoints.value.find(tp => tp.id === selectedStartTimeId.value);
+  if (!startTimePoint) return false;
+
+  const [hours, minutes] = startTimePoint.point.split(':').map(Number);
+  const currentTime = new Date();
+  const startTime = new Date();
+  startTime.setHours(hours, minutes, 0, 0);
+
+  // 开始时间必须晚于当前时间（至少当前时间+30分钟，可根据需求调整）
+  const minTime = new Date(currentTime.getTime() + 30 * 60 * 1000); // 30分钟后
+  return startTime >= minTime;
 };
 
 // 重置时间点选择
@@ -522,6 +680,8 @@ const formatMonth = (date) => `${date.getMonth() + 1}月`;
 const showTermsModal = () => {
   if (canBook.value) {
     termsModalVisible.value = true;
+  } else if (!isSelectedTimeValid()) {
+    ElMessage.warning('预约时间必须晚于当前时间30分钟以上');
   }
 };
 
@@ -531,6 +691,13 @@ const proceedWithBooking = async () => {
     if (!currentUser.value.id) {
       ElMessage.error('请先登录');
       router.push('/wechat-auth');
+      return;
+    }
+
+    // 再次校验时间有效性（防止绕过前端限制）
+    if (!isSelectedTimeValid()) {
+      ElMessage.error('预约时间必须晚于当前时间30分钟以上');
+      termsModalVisible.value = false;
       return;
     }
 
@@ -689,8 +856,75 @@ const updateFormValidity = (isValid) => {
   letter-spacing: 0.5px;
 }
 
-.placeholder {
+.favorite-button {
   width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  color: #f56565;
+}
+
+.favorite-button:hover {
+  background: rgba(245, 101, 101, 0.1);
+  transform: scale(1.05);
+}
+
+/* 教室信息卡片头部 */
+.room-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.room-name {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a202c;
+  line-height: 1.3;
+  flex: 1;
+  margin-right: 16px;
+}
+
+.favorite-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 600;
+  font-size: 14px;
+  color: #718096;
+  background: white;
+  white-space: nowrap;
+}
+
+.favorite-indicator:hover {
+  border-color: #f56565;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 101, 101, 0.15);
+}
+
+.favorite-indicator.favorited {
+  background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+  border-color: #fc8181;
+  color: #c53030;
+}
+
+.favorite-indicator.favorited:hover {
+  background: linear-gradient(135deg, #feb2b2 0%, #fc8181 100%);
+  color: white;
+}
+
+.favorite-text {
+  font-weight: 600;
 }
 
 /* 加载状态 */
@@ -796,14 +1030,6 @@ const updateFormValidity = (isValid) => {
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
 }
 
-.room-name {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1a202c;
-  margin-bottom: 20px;
-  line-height: 1.3;
-}
-
 .room-meta {
   display: flex;
   gap: 24px;
@@ -899,6 +1125,20 @@ const updateFormValidity = (isValid) => {
   border-color: #1677ff;
   box-shadow: 0 8px 20px rgba(22, 119, 255, 0.4);
   transform: translateY(-2px);
+}
+
+/* 新增：过期日期样式 */
+.date-item.disabled {
+  background: #f1f5f9;
+  color: #cbd5e0;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.date-item.disabled:hover {
+  background: #f1f5f9;
+  transform: none;
+  box-shadow: none;
 }
 
 .date-weekday {
@@ -1079,25 +1319,6 @@ const updateFormValidity = (isValid) => {
 
 .interval-tip svg {
   flex-shrink: 0;
-}
-
-/* 过渡动画 */
-.slide-fade-enter-active {
-  transition: all 0.3s ease-out;
-}
-
-.slide-fade-leave-active {
-  transition: all 0.2s ease-in;
-}
-
-.slide-fade-enter-from {
-  transform: translateY(-10px);
-  opacity: 0;
-}
-
-.slide-fade-leave-to {
-  transform: translateY(-10px);
-  opacity: 0;
 }
 
 /* 预约按钮 */
@@ -1304,8 +1525,20 @@ const updateFormValidity = (isValid) => {
 
 /* 响应式适配 */
 @media (max-width: 480px) {
+  .room-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
   .room-name {
     font-size: 24px;
+    margin-right: 0;
+  }
+
+  .favorite-indicator {
+    align-self: stretch;
+    justify-content: center;
   }
 
   .time-slots {

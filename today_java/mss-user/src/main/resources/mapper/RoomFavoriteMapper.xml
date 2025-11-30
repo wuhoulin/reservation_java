@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.skeleton.user.mapper.RoomFavoriteMapper">
+
+    <resultMap id="RoomFavoriteResponseMap" type="com.microservice.skeleton.user.domain.Response.RoomFavoriteResponse">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="room_id" property="roomId"/>
+        <result column="room_name" property="roomName"/>
+        <result column="capacity" property="capacity"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="community_id" property="communityId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="is_favorited" property="isFavorited"/>
+    </resultMap>
+
+    <select id="selectFavoritesByUserId" resultMap="RoomFavoriteResponseMap">
+        SELECT
+            rf.id,
+            rf.user_id,
+            rf.room_id,
+            r.name as room_name,
+            r.capacity,
+            r.image_url,
+            r.community_id,
+            rf.created_at,
+            true as is_favorited
+        FROM room_favorites rf
+                 LEFT JOIN rooms r ON rf.room_id = r.id
+        WHERE rf.user_id = #{userId}
+        ORDER BY rf.created_at DESC
+    </select>
+
+    <select id="existsByUserIdAndRoomId" resultType="boolean">
+        SELECT COUNT(1) > 0
+        FROM room_favorites
+        WHERE user_id = #{userId} AND room_id = #{roomId}
+    </select>
+
+    <delete id="deleteByUserIdAndRoomId">
+        DELETE FROM room_favorites
+        WHERE user_id = #{userId} AND room_id = #{roomId}
+    </delete>
+
+</mapper>

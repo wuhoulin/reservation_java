@@ -30,4 +30,5 @@ public interface ReservationService extends IService<Reservation> {
      * @param userId 用户ID
      */
     void resubmitReservation(Integer reservationId, String userId);
+    public void completeReservation(String reservationNo);
 }

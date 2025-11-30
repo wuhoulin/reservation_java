@@ -1,6 +1,5 @@
 <template>
   <div class="student-reservations">
-
     <div class="user-header">
       <div class="user-avatar" @click="goToUserProfile" style="cursor: pointer;">
         <img :src="userInfo.headimgurl || defaultAvatar" alt="头像" />
@@ -11,138 +10,179 @@
       </div>
     </div>
 
-    <div class="stats-cards">
-      <div class="stat-card" @click="viewAllReservations('all')" style="cursor: pointer;">
-        <div class="stat-number">{{ totalReservations }}</div>
-        <div class="stat-label">总预约</div>
-      </div>
-      <div class="stat-card" @click="viewAllReservations('active')" style="cursor: pointer;">
-        <div class="stat-number">{{ activeReservations }}</div>
-        <div class="stat-label">进行中</div>
-      </div>
-      <div class="stat-card" @click="viewAllReservations('completed')" style="cursor: pointer;">
-        <div class="stat-number">{{ completedReservations }}</div>
-        <div class="stat-label">已完成</div>
-      </div>
-      <div class="stat-card" @click="viewAllReservations('rejected')" style="cursor: pointer;">
-        <div class="stat-number">{{ rejectedReservations }}</div>
-        <div class="stat-label">被退回</div>
-      </div>
-    </div>
-
-    <div class="reservations-section">
-      <div class="section-header" @click="viewAllReservations('all')">
-        <h3>我的预约</h3>
-        <div class="header-right">
-          <span class="section-badge">{{ reservations.length }} 条记录</span>
+    <!-- 快捷入口 -->
+    <div class="quick-card">
+      <div class="quick-stats">
+        <div class="quick-stat-item">
+          <!-- 动态绑定 loading 类，控制加载动画显示 -->
+          <span class="quick-count" :class="{ loading: loading }">
+            {{ loading ? '加载中' : totalReservations }}
+          </span>
+          <span class="quick-label">预约记录</span>
         </div>
-      </div>
-
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
-        <p>加载中...</p>
-      </div>
-
-      <div v-else-if="reservations.length === 0" class="empty-state">
-        <div class="empty-icon">📋</div>
-        <p>暂无预约记录</p>
-        <button @click="goToCommunityList" class="primary-btn">去预约</button>
-      </div>
-
-      <div v-else class="reservations-list">
-        <div
-            v-for="reservation in reservations"
-            :key="reservation.id"
-            class="reservation-card"
-            :class="getStatusClass(reservation.status)"
-        >
-          <div class="reservation-header">
-            <span class="room-name">{{ reservation.roomName }}</span>
-            <span class="status-badge" :class="getStatusClass(reservation.status)">
-              {{ getStatusText(reservation.status) }}
-            </span>
-          </div>
-
-          <div class="reservation-details">
-            <div class="detail-item">
-              <span class="label">预约时间：</span>
-              <span class="value">{{ formatDate(reservation.reservationDate, reservation.startTime, reservation.endTime) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">时长：</span>
-              <span class="value">{{ calculateDuration(reservation.startTime, reservation.endTime) }} 小时</span>
-            </div>
-            <div class="detail-item" v-if="reservation.activityName">
-              <span class="label">用途：</span>
-              <span class="value">{{ reservation.activityName }}</span>
-            </div>
-            <div class="detail-item" v-if="reservation.status === 2 && reservation.auditReason">
-              <span class="label">退回原因：</span>
-              <span class="value reject-reason">{{ reservation.auditReason }}</span>
-            </div>
-          </div>
-
-          <div class="reservation-actions" v-if="reservation.status === 0">
-            <button @click="cancelReservation(reservation.reservationNo)" class="cancel-btn">
-              取消预约
-            </button>
-          </div>
-
+        <div class="quick-stat-item">
+          <span class="quick-count" :class="{ loading: loadingFavorites }">
+            {{ loadingFavorites ? '加载中' : favoriteCount }}
+          </span>
+          <span class="quick-label">收藏房间</span>
+        </div>
+        <div class="quick-stat-item">
+          <span class="quick-count" :class="{ loading: loadingMessages }">
+            {{ loadingMessages ? '加载中' : messageCount }}
+          </span>
+          <span class="quick-label">消息通知</span>
         </div>
       </div>
     </div>
-    <div class="cache-control-section" @click="clearAllCache">
-      清除缓存
+
+    <!-- 功能菜单网格 -->
+    <div class="menu-grid">
+      <div class="menu-item" @click="viewAllReservations('all')">
+        <div class="menu-icon green">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+        </div>
+        <span class="menu-text">我的预约</span>
+        <span class="menu-arrow">›</span>
+      </div>
+
+      <div class="menu-item" @click="goToFavorites">
+        <div class="menu-icon pink">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+          </svg>
+        </div>
+        <span class="menu-text">收藏房间</span>
+        <span class="menu-arrow">›</span>
+      </div>
+
+      <div class="menu-item" @click="goToMessages">
+        <div class="menu-icon blue">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+        </div>
+        <span class="menu-text">消息通知</span>
+        <span class="menu-arrow">›</span>
+      </div>
+
+      <div class="menu-item" @click="goToFeedback">
+        <div class="menu-icon cyan">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+        <span class="menu-text">意见反馈</span>
+        <span class="menu-arrow">›</span>
+      </div>
+
+      <div class="menu-item" @click="showClearCacheDialog = true">
+        <div class="menu-icon red">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 0-2 2H7a2 2 0 0 0-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </div>
+        <span class="menu-text">清除缓存</span>
+        <span class="menu-arrow">›</span>
+      </div>
+
+      <div class="menu-item" @click="goToAbout">
+        <div class="menu-icon gray">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </div>
+        <span class="menu-text">关于我们</span>
+        <span class="menu-arrow">›</span>
+      </div>
     </div>
+
+    <!-- 消息提示 -->
     <div v-if="showMessage" class="message-toast" :class="messageType">
       {{ messageText }}
     </div>
-  </div>
+
+    <!-- 自定义清除缓存弹窗（去掉图标） -->
+    <div v-if="showClearCacheDialog" class="cache-dialog-overlay">
+      <div class="cache-dialog">
+        <!-- 移除图标部分 -->
+        <div class="dialog-content">
+          <h3 class="dialog-title">清除本地缓存</h3>
+          <p class="dialog-desc">确定要清除所有本地缓存并重新加载页面吗？<br>这可能有助于解决登录或数据异常问题。</p>
+        </div>
+        <div class="dialog-buttons">
+          <button class="btn cancel-btn" @click="showClearCacheDialog = false">
+            取消
+          </button>
+          <button class="btn confirm-btn" @click="handleClearCache">
+            确认清除
+          </button>
+        </div>
+      </div>
+    </div>
+  </div> <!-- 补全根容器闭合标签 -->
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { getLatestReservations, cancelUserReservation, resubmitUserReservation } from '@/api/reservations'
+import { ElMessage } from 'element-plus'
+// 导入预约相关接口
+import { getMyReservations } from '@/api/reservations.js'
 
 const router = useRouter()
 
 // 用户信息
 const userInfo = ref({})
 const reservations = ref([])
+// 加载状态（区分不同数据加载）
 const loading = ref(true)
+const loadingFavorites = ref(true)
+const loadingMessages = ref(true)
 
 // 消息提示相关状态
 const showMessage = ref(false)
 const messageText = ref('')
-const messageType = ref('success') // 'success' 或 'error'
+const messageType = ref('success')
+
+// 清除缓存弹窗状态
+const showClearCacheDialog = ref(false)
 
 // 默认头像
 const defaultAvatar = 'https://thirdwx.qlogo.cn/mmopen/vi_32/POgEwh4mIHO4nibH0KlMECNjjGxQUq24ZEaGT4poC6icRiccVGKSyXwibcPq4BWmiaIGuG1icwxaQX6grC9VemZoJ8rg/132'
 
-// 计算属性
+// 初始化数据（后续通过接口获取）
+const favoriteCount = ref(0)
+const messageCount = ref(0)
+const pointsBalance = ref(0)
+
+// 计算属性 - 基于真实预约数据计算统计
 const totalReservations = computed(() => reservations.value.length)
 const activeReservations = computed(() =>
-    reservations.value.filter(r => r.status === 0 || r.status === 1).length
-)
+    reservations.value.filter(r => r.status === 0 || r.status === 1).length) // 待审核+已通过=进行中
 const completedReservations = computed(() =>
-    reservations.value.filter(r => r.status === 3 || r.status === 4).length
-)
-
+    reservations.value.filter(r => r.status === 3 || r.status === 4).length) // 已取消+已完成=已完成
 const rejectedReservations = computed(() =>
-    reservations.value.filter(r => r.status === 2).length
-)
+    reservations.value.filter(r => r.status === 2).length) // 已拒绝=被退回
 
-// 清除缓存方法
-const clearAllCache = () => {
-  if (!confirm('确定要清除所有本地缓存并重新加载页面吗？这可能有助于解决登录或数据异常问题。')) {
-    return
-  }
+// 新增积分页面跳转方法
+const goToPoints = () => {
+  router.push('/points-balance')
+}
 
+// 处理清除缓存逻辑
+const handleClearCache = () => {
+  showClearCacheDialog.value = false
   try {
-    console.log('🧹 开始清除所有缓存...')
-
-    // 清除 localStorage 中的所有相关数据
+    console.log('开始清除所有缓存...')
     const itemsToRemove = [
       'wechat_openid',
       'jwt_token',
@@ -153,16 +193,10 @@ const clearAllCache = () => {
       'reservation_data',
       'community_data'
     ]
-
     itemsToRemove.forEach(item => {
       localStorage.removeItem(item)
-      console.log(`✅ 已清除: ${item}`)
     })
-
-    // 清除 sessionStorage
     sessionStorage.clear()
-
-    // 清除 IndexedDB 等其他存储（如果有的话）
     if (window.indexedDB) {
       window.indexedDB.databases().then(databases => {
         databases.forEach(db => {
@@ -172,41 +206,29 @@ const clearAllCache = () => {
         })
       })
     }
-
-    // 清除 Cookie（针对特定域名）
     document.cookie.split(";").forEach(cookie => {
       const eqPos = cookie.indexOf("=")
-      const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie
-      document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=" + window.location.hostname
+      const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim()
+      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`
     })
-
-    console.log('✅ 所有缓存清除完成')
-
-    // 显示成功消息
     showMessage.value = true
-    messageText.value = '✅ 缓存清除成功，即将重新加载...'
+    messageText.value = '缓存清除成功，即将重新加载...'
     messageType.value = 'success'
-
-    // 1.5秒后重新加载页面
     setTimeout(() => {
       window.location.href = '/?clear=all&t=' + Date.now()
     }, 1500)
-
   } catch (error) {
-    console.error('❌ 清除缓存失败:', error)
-
-    // 显示错误消息
+    console.error('清除缓存失败:', error)
     showMessage.value = true
-    messageText.value = '❌ 清除失败，请重试'
+    messageText.value = '清除失败，请重试'
     messageType.value = 'error'
-
     setTimeout(() => {
       showMessage.value = false
     }, 3000)
   }
 }
 
-// 方法
+// 加载用户信息
 const loadUserInfo = () => {
   const userInfoStr = localStorage.getItem('user_info')
   if (userInfoStr) {
@@ -214,42 +236,65 @@ const loadUserInfo = () => {
   }
 }
 
+// 加载预约信息（通过接口获取真实数据）
 const loadReservations = async () => {
   try {
     loading.value = true
-    const response = await getLatestReservations()
-    reservations.value = response.data || []
-    loading.value = false
+    // 调用接口获取当前用户所有预约记录（status=null表示查询所有状态）
+    const response = await getMyReservations(null)
+    if (response.code === 200 && response.data) {
+      reservations.value = response.data || []
+    } else {
+      throw new Error(response.message || '获取预约记录失败')
+    }
   } catch (error) {
     console.error('加载预约信息失败:', error)
+    ElMessage.error('加载预约记录失败，请稍后重试')
+    reservations.value = [] // 异常时置空
+  } finally {
     loading.value = false
-    // 可以添加错误提示
   }
 }
 
-const getStatusClass = (status) => {
-  const statusMap = {
-    0: 'pending',      // 待审核
-    1: 'confirmed',    // 已通过
-    2: 'rejected',     // 被拒绝
-    3: 'cancelled',    // 已取消
-    4: 'completed'     // 已完成
+// 加载收藏数量（示例：假设后续有收藏接口，这里先模拟）
+const loadFavoritesCount = async () => {
+  try {
+    loadingFavorites.value = true
+    // 后续替换为真实的收藏接口：
+    // const response = await getFavoritesCount()
+    // favoriteCount.value = response.data || 0
+
+    // 模拟：如果没有接口，暂时默认0（或从本地存储读取）
+    const favorites = localStorage.getItem('favorites')
+    favoriteCount.value = favorites ? JSON.parse(favorites).length : 0
+  } catch (error) {
+    console.error('加载收藏数量失败:', error)
+    favoriteCount.value = 0
+  } finally {
+    loadingFavorites.value = false
   }
-  return statusMap[status] || 'pending'
 }
 
-const getStatusText = (status) => {
-  const statusTextMap = {
-    0: '待审核',
-    1: '已通过',
-    2: '被退回',
-    3: '已取消',
-    4: '已完成'
+// 加载消息数量（示例：假设后续有消息接口，这里先模拟）
+const loadMessageCount = async () => {
+  try {
+    loadingMessages.value = true
+    // 后续替换为真实的消息接口：
+    // const response = await getUnreadMessageCount()
+    // messageCount.value = response.data || 0
+
+    // 模拟：如果没有接口，暂时默认0（或从本地存储读取）
+    const messages = localStorage.getItem('unread_messages')
+    messageCount.value = messages ? JSON.parse(messages).length : 0
+  } catch (error) {
+    console.error('加载消息数量失败:', error)
+    messageCount.value = 0
+  } finally {
+    loadingMessages.value = false
   }
-  return statusTextMap[status] || '未知状态'
 }
 
-// 查看全部预约
+// 查看所有预约
 const viewAllReservations = (filterType = 'all') => {
   router.push({
     path: '/reservation-list',
@@ -257,124 +302,72 @@ const viewAllReservations = (filterType = 'all') => {
   })
 }
 
-// 格式化日期和时间
-const formatDate = (reservationDate, startTime, endTime) => {
-  const date = new Date(reservationDate)
-  const formattedDate = date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-  return `${formattedDate} ${startTime} - ${endTime}`
-}
-
-// 计算时长
-const calculateDuration = (startTime, endTime) => {
-  const start = new Date(`2000-01-01 ${startTime}`)
-  const end = new Date(`2000-01-01 ${endTime}`)
-  const duration = (end - start) / (1000 * 60 * 60) // 转换为小时
-  return duration.toFixed(1)
-}
-
-const cancelReservation = async (reservationNo) => {
-  if (confirm('确定要取消这个预约吗？')) {
-    try {
-      await cancelUserReservation(reservationNo)
-      // 重新加载数据
-      await loadReservations()
-      // 可以添加成功提示
-    } catch (error) {
-      console.error('取消预约失败:', error)
-      // 可以添加错误提示
-    }
-  }
-}
-
-// 重新提交预约 (函数保留，但模板中已无调用)
-const resubmitReservation = async (reservationId) => {
-  if (confirm('确定要重新提交这个预约吗？')) {
-    try {
-      // 这里的逻辑仍然保留，以防后端 API 依赖
-      await resubmitUserReservation(reservationId)
-      // 重新加载数据
-      await loadReservations()
-      // 可以添加成功提示
-    } catch (error) {
-      console.error('重新提交预约失败:', error)
-      // 可以添加错误提示
-    }
-  }
-}
-
-const goToCommunityList = () => {
-  router.push('/community-list')
-}
-
+// 跳转个人资料
 const goToUserProfile = () => {
   router.push('/user-profile')
 }
 
-// 生命周期
+// 跳转收藏
+const goToFavorites = () => {
+  router.push('/favorites')
+}
+
+// 跳转消息
+const goToMessages = () => {
+  router.push('/messages')
+}
+
+// 跳转意见反馈
+const goToFeedback = () => {
+  router.push('/feedback')
+}
+
+// 跳转帮助中心
+const goToHelp = () => {
+  router.push('/help')
+}
+
+// 跳转关于我们
+const goToAbout = () => {
+  // router.push('/about')
+}
+
+// 生命周期：挂载时加载所有数据
 onMounted(() => {
   loadUserInfo()
-  loadReservations()
+  loadReservations() // 加载真实预约数据
+  loadFavoritesCount() // 加载收藏数量
+  loadMessageCount() // 加载消息数量
 })
 </script>
 
 <style scoped>
+/* 背景改为白色 */
 .student-reservations {
   min-height: calc(100vh - 70px);
   padding: 16px;
-  background: #f5f5f5;
+  background: #ffffff;
 }
-
-/* 优化后的清除缓存控制区域 */
-.cache-control-section {
-  /* 位置和颜色保持不变 */
-  margin-top: 10px;
-  background: white;
-  padding: 16px;
-  border-radius: 12px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  /* 优化样式 */
-  font-size: 16px;
-  font-weight: 600; /* 加粗 */
-  color: #ff4d4f; /* 使用取消按钮的红色，醒目 */
-  cursor: pointer; /* 鼠标指针变化 */
-  transition: all 0.3s ease;
-  border: 1px solid transparent; /* 边框透明 */
-}
-
-/* 鼠标悬停效果 */
-.cache-control-section:hover {
-  background: #fff2f0; /* 悬停时背景变浅红 */
-  color: #d9363e; /* 悬停时字体颜色变深 */
-  transform: translateY(-2px); /* 轻微上浮 */
-  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.2); /* 悬停时阴影增强 */
-  border-color: #ffccc7; /* 悬停时显示边框 */
-}
-
 
 /* 用户头部信息 */
 .user-header {
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
+  background: #ffffff;
+  padding: 24px 20px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .user-avatar {
-  width: 60px;
-  height: 60px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   overflow: hidden;
   margin-right: 16px;
-  border: 3px solid #07c160;
+  border: 3px solid #43a047;
+  box-shadow: 0 2px 12px rgba(67, 160, 71, 0.2);
 }
 
 .user-avatar img {
@@ -388,316 +381,178 @@ onMounted(() => {
 }
 
 .user-nickname {
-  margin: 0 0 4px 0;
-  font-size: 18px;
-  color: #333;
+  margin: 0 0 6px 0;
+  font-size: 20px;
+  color: #333333;
   font-weight: 600;
 }
 
 .user-openid {
   margin: 0;
-  font-size: 12px;
-  color: #666;
-  font-family: monospace;
+  font-size: 13px;
+  color: #888888;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* 统计卡片 - 修改为4列 */
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+/* 快捷入口 */
+.quick-card {
+  width: 100%;
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px 16px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   margin-bottom: 20px;
 }
 
-.stat-card {
-  background: white;
-  padding: 16px;
-  border-radius: 8px;
-  text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+.quick-stats {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+}
+
+.quick-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   cursor: pointer;
+  transition: color 0.2s;
 }
 
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.quick-stat-item:hover .quick-count {
+  color: #1565c0;
 }
 
-.stat-number {
-  font-size: 24px;
-  font-weight: bold;
+.quick-count {
+  font-size: 23px;
+  font-weight: 700;
+  color: #1e88e5;
+  line-height: 1.2;
   margin-bottom: 4px;
 }
 
-/* 不同状态的数字颜色 */
-.stat-card:nth-child(1) .stat-number { color: #07c160; } /* 总预约 */
-.stat-card:nth-child(2) .stat-number { color: #1890ff; } /* 进行中 */
-.stat-card:nth-child(3) .stat-number { color: #52c41a; } /* 已完成 */
-.stat-card:nth-child(4) .stat-number { color: #ff4d4f; } /* 被退回 */
-
-.stat-label {
-  font-size: 12px;
-  color: #666;
-}
-
-/* 预约列表区域 */
-.reservations-section {
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border-radius: 6px;
-  padding: 12px;
-  margin: -12px -12px 16px -12px;
-}
-
-.section-header:hover {
-  background: #f8f9fa;
-}
-
-.section-header h3 {
-  margin: 0;
-  color: #333;
-  font-size: 16px;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.section-badge {
-  background: #07c160;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-}
-
-.view-all {
-  color: #07c160;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.3s ease;
-}
-
-.section-header:hover .view-all {
-  transform: translateX(2px);
-}
-
-/* 加载状态 */
-.loading-state {
-  text-align: center;
-  padding: 40px 0;
-}
-
-.spinner {
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #07c160;
+/* 加载中样式：使用动态 class 替代 :contains 伪类 */
+.quick-count.loading::after {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ccc;
+  border-top-color: #1e88e5;
   border-radius: 50%;
-  width: 30px;
-  height: 30px;
   animation: spin 1s linear infinite;
-  margin: 0 auto 12px;
+  vertical-align: middle;
+  margin-left: 4px;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* 空状态 */
-.empty-state {
-  text-align: center;
-  padding: 40px 0;
-  color: #666;
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-}
-
-.primary-btn {
-  background: #07c160;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
+.quick-label {
   font-size: 14px;
-  margin-top: 12px;
-  transition: all 0.3s ease;
+  color: #888;
 }
 
-.primary-btn:hover {
-  background: #06a050;
-  transform: translateY(-1px);
-}
-
-/* 预约卡片 */
-.reservations-list {
-  display: flex;
-  flex-direction: column;
+/* 功能菜单网格 */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
 
-.reservation-card {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 16px;
-  transition: all 0.3s ease;
-}
-
-.reservation-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.reservation-card.pending {
-  border-left: 4px solid #ffa500;
-}
-
-.reservation-card.confirmed {
-  border-left: 4px solid #07c160;
-}
-
-.reservation-card.completed {
-  border-left: 4px solid #1890ff;
-}
-
-.reservation-card.cancelled {
-  border-left: 4px solid #999;
-  opacity: 0.7;
-}
-
-/* 新增：被退回状态样式 */
-.reservation-card.rejected {
-  border-left: 4px solid #ff4d4f;
-  background: #fff2f0;
-}
-
-.reservation-header {
+.menu-item {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px 16px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.room-name {
-  font-weight: 600;
-  color: #333;
-  font-size: 16px;
+.menu-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-color: #e8e8e8;
 }
 
-.status-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
+.menu-item:active {
+  transform: scale(0.98);
 }
 
-.status-badge.pending {
-  background: #fff7e6;
-  color: #fa8c16;
-}
-
-.status-badge.confirmed {
-  background: #f6ffed;
-  color: #52c41a;
-}
-
-.status-badge.completed {
-  background: #e6f7ff;
-  color: #1890ff;
-}
-
-.status-badge.cancelled {
-  background: #f5f5f5;
-  color: #666;
-}
-
-/* 新增：被退回状态徽章 */
-.status-badge.rejected {
-  background: #fff2f0;
-  color: #ff4d4f;
-}
-
-.reservation-details {
+.menu-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
 }
 
-.detail-item {
-  display: flex;
-  font-size: 14px;
+.menu-icon.green {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  color: #43a047;
 }
 
-.label {
-  color: #666;
-  min-width: 70px;
+.menu-icon.pink {
+  background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%);
+  color: #e91e63;
 }
 
-.value {
-  color: #333;
+.menu-icon.blue {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  color: #1e88e5;
+}
+
+.menu-icon.cyan {
+  background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+  color: #00acc1;
+}
+
+.menu-icon.red {
+  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+  color: #e53935;
+}
+
+.menu-icon.orange {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  color: #fb8c00;
+}
+
+.menu-icon.teal {
+  background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
+  color: #00897b;
+}
+
+.menu-icon.gray {
+  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+  color: #757575;
+}
+
+.menu-text {
   flex: 1;
-}
-
-/* 新增：退回原因样式 */
-.reject-reason {
-  color: #ff4d4f;
+  font-size: 15px;
+  color: #333;
   font-weight: 500;
+  letter-spacing: 0.3px;
 }
 
-.reservation-actions {
-  text-align: right;
+.menu-arrow {
+  color: #c0c0c0;
+  font-size: 20px;
+  font-weight: 300;
+  transition: transform 0.2s ease;
 }
 
-.cancel-btn {
-  background: #ff4d4f;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.3s ease;
-}
-
-.cancel-btn:hover {
-  background: #d9363e;
-  transform: translateY(-1px);
-}
-
-/* 新增：重新提交按钮 (样式保留，但模板中已无调用) */
-.resubmit-btn {
-  background: #1890ff;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.3s ease;
-}
-
-.resubmit-btn:hover {
-  background: #096dd9;
-  transform: translateY(-1px);
+.menu-item:hover .menu-arrow {
+  transform: translateX(3px);
+  color: #999;
 }
 
 /* 消息提示 */
@@ -706,12 +561,13 @@ onMounted(() => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  padding: 16px 24px;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 16px 28px;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 500;
   z-index: 1001;
   animation: fadeInOut 3s ease-in-out;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .message-toast.success {
@@ -729,5 +585,94 @@ onMounted(() => {
 @keyframes fadeInOut {
   0%, 100% { opacity: 0; transform: translate(-50%, -60%); }
   10%, 90% { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+/* 清除缓存弹窗样式（去掉图标后调整） */
+.cache-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1002;
+  backdrop-filter: blur(2px);
+}
+
+.cache-dialog {
+  background: #fff;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 360px;
+  padding: 24px 24px; /* 减少顶部内边距，去掉图标占用的空间 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  animation: dialogPop 0.3s ease-out;
+  text-align: center; /* 让标题和描述居中 */
+}
+
+@keyframes dialogPop {
+  0% { opacity: 0; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.dialog-title {
+  font-size: 18px;
+  color: #333;
+  margin: 0 0 12px 0;
+  font-weight: 600;
+}
+
+.dialog-desc {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  margin: 0 0 20px 0; /* 调整底部间距，保持整体协调 */
+}
+
+.dialog-buttons {
+  display: flex;
+  width: 100%;
+  gap: 12px;
+}
+
+.btn {
+  flex: 1;
+  padding: 12px 0;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-btn {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.cancel-btn:hover {
+  background: #e9e9e9;
+  color: #333;
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, #e53935 0%, #d32f2f 100%);
+  color: #fff;
+}
+
+.confirm-btn:hover {
+  background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+  transform: translateY(-1px);
+}
+
+.confirm-btn:active {
+  transform: scale(0.98);
 }
 </style>

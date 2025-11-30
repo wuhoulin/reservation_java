@@ -48,7 +48,7 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
     );
 
 
-    @Select("SELECT * FROM reservation WHERE room_id = #{roomId} AND reservation_date = #{date} " +
+    @Select("SELECT * FROM reservations WHERE room_id = #{roomId} AND reservation_date = #{date} " +
             "AND status != -1 " +
             "AND start_time_id < #{endTimeId} AND end_time_id > #{startTimeId} " +
             "FOR UPDATE")

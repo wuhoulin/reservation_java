@@ -1,57 +1,63 @@
 server:
   port: 9072
+
 spring:
   application:
     name: users
 
-  # 配置 MySQL 数据库连接
+  # 配置 MySQL 数据库连接（重点优化 Hikari 连接检测）
   datasource:
-    url: jdbc:mysql://43.139.169.190:3306/today?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+    url: jdbc:mysql://43.139.169.190:3306/today?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: today
     password: whl13616963610
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
-      maximum-pool-size: 10  # 最大连接池大小
-      connection-timeout: 30000  # 连接超时时间
-      idle-timeout: 600000  # 空闲连接超时时间
-      max-lifetime: 1800000  # 最大生命周期
+      maximum-pool-size: 15  # 适当增大最大连接数（根据并发量调整，默认10，建议10-20）
+      minimum-idle: 5        # 最小空闲连接数（保持5个空闲连接，避免频繁创建销毁）
+      connection-timeout: 30000  # 连接超时时间（30秒，不变）
+      idle-timeout: 600000       # 空闲连接超时（10分钟，必须小于 MySQL 的 wait_timeout）
+      max-lifetime: 1800000      # 连接最大生命周期（30分钟，超过强制关闭，避免失效）
+      connection-test-query: SELECT 1  # 连接有效性检测SQL（MySQL 通用，关键！）
+      test-while-idle: true           # 空闲时检测连接是否有效（默认true，开启）
+      test-on-borrow: false           # 借出连接时不检测（避免影响性能，靠空闲检测即可）
+      test-on-return: false           # 归还连接时不检测（默认false，无需修改）
 
-  # 配置 Redis 连接
+  # 配置 Redis 连接（补充超时时间单位，优化池配置）
   redis:
     host: 43.139.169.190
     port: 6379
     password: redis
-    timeout: 5000
+    timeout: 5000ms  # 明确单位（之前没写单位，部分版本可能有歧义）
     jedis:
       pool:
-        max-idle: 8  # 最大空闲连接数
-        min-idle: 0  # 最小空闲连接数
-        max-active: 8  # 最大活跃连接数
-        max-wait: -1  # 最大等待时间
+        max-idle: 10        # 增大最大空闲连接数（默认8，根据Redis性能调整）
+        min-idle: 2         # 最小空闲连接数（之前0，保持2个避免频繁创建）
+        max-active: 20       # 增大最大活跃连接数（默认8，应对高并发）
+        max-wait: -1ms       # 最大等待时间（-1表示无限制，明确单位）
 
-  # 配置 Jackson 日期格式
+  # 配置 Jackson 日期格式（保持不变，已合理）
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     locale: zh_CN
     time-zone: GMT+8
 
-  # Swagger 配置
+# Swagger 配置
 swagger:
   enable: true
 
-# application.yml
+# 日志配置（补充数据库连接相关日志，方便排查）
 logging:
   level:
-    org.apereo.cas.client: DEBUG      # Apereo CAS-Client 主包
-    org.springframework.security.cas: DEBUG   # Spring Security CAS integration
-
+    org.apereo.cas.client: DEBUG
+    org.springframework.security.cas: DEBUG
+    com.zaxxer.hikari: INFO  # 打印 Hikari 连接池日志（查看连接创建/销毁/检测情况）
+    org.springframework.jdbc: INFO  # 打印 JDBC 操作日志（排查连接使用问题）
+    com.microservice.skeleton.user.mapper: DEBUG  # 打印 MyBatis SQL 日志（可选，排查慢查询）
 
 jwt:
-  secret: "mySuperSecretKeyForJWTTokenGeneration2024WithAtLeast32Characters" # 至少32个字符
+  secret: "mySuperSecretKeyForJWTTokenGeneration2024WithAtLeast32Characters"
   expiration: 86400000 # 24小时，单位毫秒
 
 wechat:
   appId: wxc202b4632d79f73b
   appSecret: 90c9703c42a6b1bb62ea023998f956cd
-
-

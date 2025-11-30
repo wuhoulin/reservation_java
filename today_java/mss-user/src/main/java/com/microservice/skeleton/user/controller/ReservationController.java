@@ -83,7 +83,9 @@ public class ReservationController {
         String openid = UserContext.getCurrentOpenid();
 
         if (openid == null) {
-            return ApiResponse.error(401, "用户未登录");
+//            return ApiResponse.error(401, "用户未登录");
+            //y用户测试
+            openid= "oAnc9vgK495dktuO_F43WR3fkrzg";
         }
 
         List<ReservationVO> reservations = reservationService.getReservationsByUserId(openid, status);

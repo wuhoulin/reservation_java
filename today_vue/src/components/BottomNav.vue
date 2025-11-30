@@ -1,23 +1,34 @@
 <template>
   <div class="bottom-nav">
     <div class="nav-container">
+
       <router-link
           to="/community-list"
           class="nav-item"
-          :class="{ active: $route.path === '/community-list' }"
+          :class="{ active: $route.path.startsWith('/community-list') }"
       >
         <div class="nav-icon">🏠</div>
-        <div class="nav-text">预约</div>
+        <div class="nav-text">社区</div>
+      </router-link>
+
+      <router-link
+          to="/reservations"
+          class="nav-item"
+          :class="{ active: $route.path.startsWith('/reservations') }"
+      >
+        <div class="nav-icon">📋</div>
+        <div class="nav-text">我的预约</div>
       </router-link>
 
       <router-link
           to="/my"
           class="nav-item"
-          :class="{ active: $route.path === '/my' }"
+          :class="{ active: $route.path.startsWith('/my') }"
       >
         <div class="nav-icon">👤</div>
-        <div class="nav-text">我的</div>
+        <div class="nav-text">个人中心</div>
       </router-link>
+
     </div>
   </div>
 </template>
@@ -66,7 +77,7 @@ const route = useRoute()
 }
 
 .nav-item.active {
-  color: #07c160;
+  color: #07c160; /* 保持激活颜色不变 */
 }
 
 .nav-icon {

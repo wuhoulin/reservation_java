@@ -6,8 +6,10 @@ import ReservationSuccess from "@/views/ReservationSuccess.vue";
 import WeChatAuth from "@/views/WeChatAuth.vue";
 import AuthCallback from "@/views/AuthCallback.vue";
 import My from "@/views/My.vue"
-import ReservationList from "@/views/ReservationList.vue";
 import UserProfile from "@/views/UserProfile.vue";
+import Feedback from "@/views/Feedback.vue";
+import Favorites from "@/views/Favorites.vue";
+import Reservations from "@/views/Reservations.vue";
 
 const routes = [
     {
@@ -38,12 +40,6 @@ const routes = [
                 meta: { requiresAuth: true }
             },
             {
-                path: 'reservation-list',
-                name: 'ReservationList',
-                component: ReservationList,
-                meta: { requiresAuth: true }
-            },
-            {
                 path: 'my',
                 name: 'My',
                 component: My,
@@ -53,6 +49,24 @@ const routes = [
                 path: 'user-profile',
                 name: 'UserProfile',
                 component: UserProfile,
+                meta: { requiresAuth: true }
+            },
+            {
+                path: 'feedback',
+                name: 'Feedback',
+                component: Feedback,
+                meta: { requiresAuth: true }
+            },
+            {
+                path: 'favorites',
+                name: 'Favorites',
+                component: Favorites,
+                meta: { requiresAuth: true }
+            },
+            {
+                path: 'reservations',
+                name: 'Reservations',
+                component: Reservations,
                 meta: { requiresAuth: true }
             }
         ]
