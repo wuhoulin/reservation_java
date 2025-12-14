@@ -207,22 +207,36 @@ const timeOptions = [
 const filteredReservations = computed(() => {
   let list = reservations.value
 
-  // 状态筛选
+  // 1. 状态筛选
   if (filterStatus.value !== 'all') {
-    // 🟢 修复点：强制转换为 String 进行比较，防止类型不匹配 (number vs string)
+    // 强制转换为 String 进行比较，防止类型不匹配 (number vs string)
     list = list.filter(item => String(item.status) === String(filterStatus.value))
   }
 
-  // 时间筛选
+  // 2. 时间筛选（核心修复逻辑）
   const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const weekStart = new Date(today)
-  weekStart.setDate(today.getDate() - today.getDay())
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  // 获取"今天"的 00:00:00 (清除时分秒影响)
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  // 获取"明天"的 00:00:00 (作为今天的结束边界)
+  const tomorrowStart = new Date(todayStart)
+  tomorrowStart.setDate(todayStart.getDate() + 1)
+
+  // 本周第一天 (假设周日为0)
+  const weekStart = new Date(todayStart)
+  weekStart.setDate(todayStart.getDate() - todayStart.getDay())
+
+  // 本月第一天
+  const monthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1)
 
   switch (filterTime.value) {
     case 'today':
-      list = list.filter(item => new Date(item.reservationDate).getTime() === today.getTime())
+      // 只要日期 >= 今天0点 且 < 明天0点，即为今天
+      list = list.filter(item => {
+        const d = new Date(item.reservationDate)
+        return d >= todayStart && d < tomorrowStart
+      })
       break
     case 'week':
       list = list.filter(item => new Date(item.reservationDate) >= weekStart)
@@ -231,14 +245,14 @@ const filteredReservations = computed(() => {
       list = list.filter(item => new Date(item.reservationDate) >= monthStart)
       break
     case 'future':
-      list = list.filter(item => new Date(item.reservationDate) >= today)
+      list = list.filter(item => new Date(item.reservationDate) >= todayStart)
       break
     case 'past':
-      list = list.filter(item => new Date(item.reservationDate) < today)
+      list = list.filter(item => new Date(item.reservationDate) < todayStart)
       break
   }
 
-  // 按日期倒序排列
+  // 按日期倒序排列 (最新的在前)
   return list.sort((a, b) => new Date(b.reservationDate) - new Date(a.reservationDate))
 })
 
@@ -268,12 +282,9 @@ const loadReservations = async () => {
   }
 }
 
-// 核心修复：点击统计卡片时的处理逻辑
+// 点击统计卡片时的处理逻辑
 const goToFilteredReservations = (status) => {
-  console.log('切换筛选状态:', status)
-  // 直接修改前端变量，触发 computed 重新计算
   filterStatus.value = String(status)
-  // 如果筛选面板是打开的，顺便关掉它（可选）
   showFilter.value = false
 }
 
@@ -314,9 +325,15 @@ const formatDate = (dateStr) => {
   const tomorrow = new Date(today)
   tomorrow.setDate(today.getDate() + 1)
 
-  if (date.toDateString() === today.toDateString()) {
+  // 清除时分秒进行比较
+  today.setHours(0,0,0,0)
+  tomorrow.setHours(0,0,0,0)
+  const compareDate = new Date(date)
+  compareDate.setHours(0,0,0,0)
+
+  if (compareDate.getTime() === today.getTime()) {
     return '今天'
-  } else if (date.toDateString() === tomorrow.toDateString()) {
+  } else if (compareDate.getTime() === tomorrow.getTime()) {
     return '明天'
   } else {
     return `${date.getMonth() + 1}月${date.getDate()}日`
@@ -335,9 +352,13 @@ const canCancelReservation = (reservation) => {
   const startDateTime = new Date(reservationDate)
   startDateTime.setHours(startHour, startMinute, 0, 0)
 
+  // 计算时间差
   const timeDiff = startDateTime.getTime() - now.getTime()
   const minutesDiff = Math.floor(timeDiff / (1000 * 60))
 
+  // 如果是待审核(0)，随时可以取消；如果是进行中(1)，需要提前5分钟（或者后端定义的1小时）
+  // 这里仅做前端基础校验，具体以后端为准
+  if (reservation.status === 0) return true;
   return minutesDiff > 5
 }
 
@@ -346,34 +367,40 @@ const viewReservationDetail = (reservation) => {
 }
 
 const handleCancelReservation = (reservation) => {
-  if (!canCancelReservation(reservation)) {
-    ElMessage.warning('距离预约开始时间不足5分钟，无法取消')
+  // 如果是已通过，且时间不足，提示用户
+  if (reservation.status === 1 && !canCancelReservation(reservation)) {
+    ElMessage.warning('距离预约开始时间不足，无法取消')
     return
   }
   selectedReservation.value = reservation
   showCancelConfirm.value = true
 }
 
+// 确认取消逻辑 (含错误展示修复)
 const confirmCancel = async () => {
   if (!selectedReservation.value) return
 
   try {
     const response = await cancelReservation(selectedReservation.value.reservationNo)
+
     if (response.code === 200) {
       ElMessage.success('取消预约成功')
+      // 更新本地列表状态
       const index = reservations.value.findIndex(item => item.id === selectedReservation.value.id)
       if (index > -1) {
-        reservations.value[index].status = 3 // 更新为已取消
+        reservations.value[index].status = 3 // 3 = 已取消
       }
+      showCancelConfirm.value = false
+      selectedReservation.value = null
     } else {
-      throw new Error(response.message || '取消预约失败')
+      throw new Error(response.message || '操作失败')
     }
   } catch (error) {
-    console.error('取消预约失败:', error)
-    ElMessage.error('取消预约失败')
-  } finally {
-    showCancelConfirm.value = false
-    selectedReservation.value = null
+    console.error('取消操作异常:', error)
+    // 优先取接口返回的报错信息，其次取 Error 对象的 message
+    const msg = error.response?.data?.message || error.message || '取消失败，请重试'
+    ElMessage.error(msg)
+    // 失败时不关闭弹窗，让用户停留在确认页看到错误
   }
 }
 

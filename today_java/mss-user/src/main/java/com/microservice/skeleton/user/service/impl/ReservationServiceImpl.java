@@ -445,59 +445,73 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
     @Override
     @Transactional
     public void cancelReservation(String reservationNo, String userId) {
-        // 1. 查询预约记录（原有逻辑）
+        // 1. 查询预约记录
         Reservation reservation = reservationMapper.selectByReservationNo(reservationNo)
                 .orElseThrow(() -> new BusinessException("预约记录不存在"));
 
-        // 2. 检查预约状态（原有逻辑）
+        // 2. 检查预约状态
+        // 只能取消 0(待审核) 或 1(已通过) 的预约
         if (reservation.getStatus() != 0 && reservation.getStatus() != 1) {
             throw new BusinessException("当前状态不可取消");
         }
 
-        // 3. 检查取消时间（原有逻辑）
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime cancelDeadline = reservation.getReservationDate().atTime(
-                getTimeById(reservation.getStartTimeId()).minusHours(1));
-        if (now.isAfter(cancelDeadline)) {
-            throw new BusinessException("已超过可取消时间（需在预约开始前1小时取消）");
+        // 3. 【核心修改】检查取消时间
+        // 只有 "已通过(status=1)" 的预约才需要校验时间限制
+        // "待审核(status=0)" 的预约可以随时取消，哪怕活动马上就要开始了
+        if (reservation.getStatus() == 1) {
+            LocalDateTime now = LocalDateTime.now();
+            // 计算截止时间：预约开始时间 - 1小时
+            LocalDateTime cancelDeadline = reservation.getReservationDate().atTime(
+                    getTimeById(reservation.getStartTimeId()).minusHours(1));
+
+            if (now.isAfter(cancelDeadline)) {
+                throw new BusinessException("已通过的预约需在开始前1小时取消");
+            }
         }
 
-        // ========== 新增修改：释放区间内所有时间点 ==========
-        // 查询系统中所有时间点，解析出预约区间内的所有时间点ID
+        // 4. 释放区间内所有时间点
+        // (注意：如果是待审核状态，且采用了并发预约模式，这里其实没有锁定记录，但执行一次释放操作也是安全的)
         List<TimePoint> allSystemTimePoints = timePointService.list();
         allSystemTimePoints.sort(Comparator.comparing(TimePoint::getPoint));
+
         List<Integer> rangeTimePointIds = allSystemTimePoints.stream()
                 .filter(tp -> tp.getId() >= reservation.getStartTimeId()
                         && tp.getId() <= reservation.getEndTimeId())
                 .map(TimePoint::getId)
                 .collect(Collectors.toList());
-        // 批量将区间内时间点标记为「可用（未预约）」，清空预约关联
+
         roomReserveDateMapper.batchUpdateTimePointStatus(
                 reservation.getRoomId().intValue(),
                 reservation.getReservationDate(),
                 rangeTimePointIds,
-                1, // status=1：可用/未预约
+                1, // status=1：恢复为可用
                 null, // 清空预约ID
                 null  // 清空预约编号
         );
 
-        // 4. 更新状态为已取消（原有逻辑）
-        reservation.setStatus(3);
+        // 5. 更新状态为已取消
+        reservation.setStatus(3); // 3 = 已取消
         reservationMapper.updateById(reservation);
 
-        // 5. 移除延时任务（原有逻辑）
-        DelayQueueMessage message = new DelayQueueMessage();
-        message.setReservationNo(reservationNo);
-        message.setReservationId(reservation.getId());
-        message.setUserId(userId);
-        message.setType("RESERVATION_COMPLETE");
-        // redisDelayQueueService.removeDelayTask(message);
-        log.info("取消预约时移除延时任务: {}", reservationNo);
+        // 6. 移除延时任务 (如果存在)
+        // 注意：如果是待审核状态，可能还没有生成完成任务，或者逻辑不同，但尝试移除无害
+        try {
+            DelayQueueMessage message = new DelayQueueMessage();
+            message.setReservationNo(reservationNo);
+            message.setReservationId(reservation.getId());
+            message.setUserId(userId);
+            message.setType("RESERVATION_COMPLETE");
+            // redisDelayQueueService.removeDelayTask(message); // 如果需要移除
+        } catch (Exception e) {
+            log.warn("移除延时任务失败（可能任务不存在），忽略错误: {}", e.getMessage());
+        }
 
-        // 6. 判断当月取消次数（原有逻辑）
+        // 7. 判断当月取消次数 (惩罚机制)
         LocalDateTime oneMonthAgo = LocalDateTime.now().minusMonths(1);
         int cnt = reservationMapper.countByUserIdAndStatusAndCancelTimeAfter(
                 userId, 3, oneMonthAgo);
+
+        // 只有当月取消超过2次才惩罚
         if (cnt >= 2) {
             LocalDateTime penaltyStart = LocalDateTime.now();
             LocalDateTime penaltyEnd   = penaltyStart.plusMonths(3);
@@ -642,7 +656,8 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
             vo.setTeacherContact(reservation.getTeacherContact()); // 补上
             vo.setOtherRequirements(reservation.getOtherRequirements()); // 补上
             vo.setAuditTime(reservation.getAuditTime()); // 补上
-
+            vo.setStartTimeId(reservation.getStartTimeId());
+            vo.setEndTimeId(reservation.getEndTimeId());
             try {
                 RoomResponse room = roomService.getRoomById(reservation.getRoomId());
                 if (room != null) {

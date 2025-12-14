@@ -19,10 +19,6 @@
         </div>
 
         <div class="location-details">
-          <div class="coordinate-item">
-            <span class="coordinate-label">定位精度：</span>
-            <span class="coordinate-value">{{ accuracy ? `±${accuracy}米` : '定位中...' }}</span>
-          </div>
           <div class="coordinate-item" v-if="distance !== null">
             <span class="coordinate-label">距离教室：</span>
             <span class="coordinate-value" :class="{ 'in-range': isInRange, 'out-range': !isInRange }">
@@ -86,7 +82,7 @@
         <div class="empty-icon">📅</div>
         <h3>当前暂无需要签到的活动</h3>
         <p class="empty-desc">请在活动开始前 30 分钟内进行签到</p>
-        <button class="back-btn" @click="$router.push('/my-reservations')">查看我的预约</button>
+        <button class="back-btn" @click="$router.push('/reservations')">查看我的预约</button>
       </div>
     </div>
 
@@ -396,7 +392,7 @@ const handleCheckIn = async () => {
       type: 'success',
       callback: () => {
         showCheckInDialogVisible.value = false
-        router.push('/my-reservations')
+        router.push('/reservations')
       }
     })
   } catch (error) {

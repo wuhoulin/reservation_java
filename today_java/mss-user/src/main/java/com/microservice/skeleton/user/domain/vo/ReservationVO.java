@@ -90,4 +90,6 @@ public class ReservationVO {
     private String communityName;
     private BigDecimal longitude;    // 经度
     private BigDecimal latitude;     // 纬度
+    private Integer startTimeId;
+    private Integer endTimeId;
 }

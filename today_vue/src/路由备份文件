@@ -13,6 +13,7 @@ import Reservations from "@/views/Reservations.vue";
 import ReservationDetail from "@/views/ReservationDetail.vue";
 import FilteredReservations from "@/views/FilteredReservations.vue";
 import Notifications from "@/views/NotificationsPage.vue";
+import CheckIn from "@/views/CheckIn.vue";
 const routes = [
     {
         path: "/",
@@ -85,13 +86,13 @@ const routes = [
                 props: true,
                 meta: { requiresAuth: true }
             },
-                  {
-                            path: 'check-in/:reservationId',
-                            name: 'CheckIn',
-                            component: CheckIn,
-                            props: true,
-                            meta: { requiresAuth: true }
-                        },
+            {
+                path: 'check-in/:reservationId',
+                name: 'CheckIn',
+                component: CheckIn,
+                props: true,
+                meta: { requiresAuth: true }
+            },
             {
                 path: 'notifications',
                 name: 'Notifications',

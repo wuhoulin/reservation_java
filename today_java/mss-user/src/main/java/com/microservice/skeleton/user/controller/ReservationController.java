@@ -59,7 +59,6 @@ public class ReservationController {
     public ApiResponse<Void> cancelReservation(@PathVariable String reservationNo) {
         String openid = UserContext.getCurrentOpenid();
 
-        // 关键修改：移除测试用默认值，改为返回未登录错误
         if (openid == null || openid.trim().isEmpty()) {
             log.error("取消预约失败：用户未登录，预约编号：{}", reservationNo);
             return ApiResponse.error(401, "用户未登录或身份验证失败，请重新登录后再试");
@@ -90,16 +89,17 @@ public class ReservationController {
         return ApiResponse.success();
     }
 
+    // 🔥🔥🔥🔥🔥 核心修改位置 🔥🔥🔥🔥🔥
     @GetMapping("/user/reservations")
     @ApiOperation("获取当前用户的预约记录")
     public ApiResponse<List<ReservationVO>> getCurrentUserReservations(
-            @RequestParam(required = false) String statusStr) { // 先接收为String类型做兼容
+            // 这里加上 value = "status"，显式告诉 Spring 去接收 URL 中的 status 参数
+            @RequestParam(value = "status", required = false) String statusStr) {
 
         String openid = UserContext.getCurrentOpenid();
 
         // 1. 校验用户登录状态
         if (openid == null || openid.trim().isEmpty()) {
-//            openid="oAnc9vgK495dktuO_F43WR3fkrzg";
             log.error("获取用户预约记录失败：用户未登录，状态参数：{}", statusStr);
             return ApiResponse.error(401, "用户未登录或身份验证失败，请重新登录后再试");
         }

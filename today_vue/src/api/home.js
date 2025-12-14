@@ -41,3 +41,12 @@ export function getAvailableRooms(communityId, date, timeSlotId) {
         params: { communityId, date, timeSlotId }
     })
 }
+export function getPendingReservationCounts(params) {
+    return request({
+        url: `/api/reservations/room/${params.roomId}/pending-counts`,
+        method: 'get',
+        params: {
+            date: params.date
+        }
+    })
+}
