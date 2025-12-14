@@ -4,12 +4,17 @@ import { getCurrentInstance } from 'vue';
 
 // 创建一个axios实例
 const request = axios.create({
-    baseURL: 'http://ndnu-yuyue.xyz:9072',
-    // baseURL: 'http://localhost:9072',
+    // ✅ 方式一：使用相对路径 (推荐)
+    // 浏览器会自动使用当前域名(https://ndnu-yuyue.xyz)拼接
+    // 配合 Nginx 的 location /wechat/ 代理规则
+    baseURL: '/wechat',
+
+    // ✅ 方式二：写死 HTTPS 域名
+    // baseURL: 'https://ndnu-yuyue.xyz/wechat',
+
     timeout: 5000,
     withCredentials: true,
 });
-
 // 请求拦截器
 request.interceptors.request.use((config) => {
     const token = localStorage.getItem("jwt_token");

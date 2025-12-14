@@ -17,7 +17,7 @@
           :class="{ active: $route.path.startsWith('/check-in') }"
       >
         <div class="nav-icon">📝</div>
-        <div class="nav-text">签到演示</div>
+        <div class="nav-text">签到</div>
       </router-link>
 
       <router-link

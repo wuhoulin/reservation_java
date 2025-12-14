@@ -50,20 +50,23 @@ public class WeChatAuthController {
     /**
      * 生成微信授权URL
      */
+    /**
+     * 生成微信授权URL - HTTPS版本
+     */
     @GetMapping("/generate-auth-url")
     public Map<String, String> generateAuthUrl(
             @RequestParam String redirectPath,
             @RequestParam(defaultValue = "snsapi_userinfo") String scope) {
 
         try {
-            // 注意：这里建议配置为动态域名，避免硬编码
-            String redirectUri = "http://ndnu-yuyue.xyz" + redirectPath;
+            // ⚠️ 关键修复：改为HTTPS
+            String redirectUri = "https://ndnu-yuyue.xyz" + redirectPath;
 
-            log.info("=== 微信授权详细调试 ===");
+            log.info("=== 微信授权详细调试（HTTPS）===");
             log.info("AppId: {}", appId);
             log.info("授权范围: {}", scope);
             log.info("前端路径: {}", redirectPath);
-            log.info("生成的redirect_uri: {}", redirectUri);
+            log.info("生成的redirect_uri (HTTPS): {}", redirectUri);
 
             String encodedRedirectUri = URLEncoder.encode(redirectUri, "UTF-8");
             log.info("编码后的redirect_uri: {}", encodedRedirectUri);

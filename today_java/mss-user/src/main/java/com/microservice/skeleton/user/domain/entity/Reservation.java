@@ -106,4 +106,13 @@ public class Reservation {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime auditTime;
 
+    @ApiModelProperty("实际签到时间")
+    @TableField("check_in_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime checkInTime;
+
+    @ApiModelProperty("签到状态：0-未签到，1-已签到，2-已违约(超时未签)")
+    @TableField("check_in_status")
+    private Integer checkInStatus;
+
 }

@@ -1,9 +1,11 @@
 package com.microservice.skeleton.user.controller;
 
+import com.microservice.skeleton.user.domain.Request.CheckInRequest;
 import com.microservice.skeleton.user.domain.Request.ReservationRequest;
 import com.microservice.skeleton.user.domain.Response.ApiResponse;
 import com.microservice.skeleton.user.domain.Response.ReservationResponse;
 import com.microservice.skeleton.user.domain.Response.RoomReservationStatusResponse;
+import com.microservice.skeleton.user.domain.vo.CheckInStateVO;
 import com.microservice.skeleton.user.domain.vo.ReservationVO;
 import com.microservice.skeleton.user.service.ReservationService;
 import com.microservice.skeleton.user.util.UserContext;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reservations")
@@ -32,7 +35,6 @@ public class ReservationController {
     @PostMapping
     @ApiOperation("创建预约")
     public ApiResponse<ReservationResponse> createReservation(@Valid @RequestBody ReservationRequest request) {
-        // 注：创建预约的用户登录校验已在 Service 层完成，此处保持原有逻辑
         ReservationResponse response = reservationService.createReservation(request);
         return ApiResponse.success(response);
     }
@@ -142,23 +144,56 @@ public class ReservationController {
     public ApiResponse<ReservationVO> getReservationDetail(@PathVariable Integer id) {
         String openid = UserContext.getCurrentOpenid();
 
-        // 调试用：如果没有登录，给一个默认账号（生产环境请务必删除或改为报错）
         if (openid == null || openid.trim().isEmpty()) {
             return ApiResponse.error(401, "用户未登录或身份验证失败，请重新登录后再试");
         }
-
-        // 1. 查询数据
-        // 注意：这里变量名改成了单数 reservation，对应下面的判断
         ReservationVO reservation = reservationService.getReservationDetail(id);
 
-        // 2. 判空校验
         if (reservation == null) {
             log.error("预约详情不存在，预约ID：{}", id);
             return ApiResponse.error(404, "预约不存在");
         }
 
-
-
         return ApiResponse.success(reservation);
+    }
+
+    /**
+     * 用户现场签到接口
+     */
+    @PostMapping("/check-in")
+    public ApiResponse checkIn(@RequestBody CheckInRequest request) {
+        String userId= UserContext.getCurrentOpenid();
+        reservationService.performCheckIn(userId, request);
+        return ApiResponse.success("签到成功！");
+    }
+
+    @GetMapping("/current-check-in")
+    @ApiOperation("获取当前需要签到的预约任务")
+    public ApiResponse<ReservationVO> getCurrentCheckInTask() {
+        String openid = UserContext.getCurrentOpenid();
+        ReservationVO task = reservationService.findCurrentCheckInTask(openid);
+        if (task == null) {
+            return ApiResponse.success(null); // 没有任务
+        }
+        return ApiResponse.success(task);
+    }
+
+    @GetMapping("/check-in-state")
+    @ApiOperation("获取签到页面状态")
+    public ApiResponse<CheckInStateVO> getCheckInState() {
+        String openid = UserContext.getCurrentOpenid();
+        CheckInStateVO state = reservationService.getCheckInState(openid);
+        return ApiResponse.success(state);
+    }
+
+
+    @GetMapping("/room/{roomId}/pending-counts")
+    @ApiOperation("查询某天教室各时间段的待审核人数")
+    public ApiResponse<Map<Integer, Integer>> getPendingReservationCounts(
+            @PathVariable Integer roomId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        Map<Integer, Integer> counts = reservationService.getPendingCounts(roomId, date);
+        return ApiResponse.success(counts);
     }
 }

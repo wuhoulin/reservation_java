@@ -5,6 +5,7 @@ import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -87,4 +88,6 @@ public class ReservationVO {
 
     @ApiModelProperty("所属社区名称")
     private String communityName;
+    private BigDecimal longitude;    // 经度
+    private BigDecimal latitude;     // 纬度
 }

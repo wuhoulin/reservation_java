@@ -1,6 +1,5 @@
 <template>
   <div class="room-detail-container">
-    <!-- 顶部导航栏 -->
     <div class="header">
       <div class="back-button" @click="goBack">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -18,15 +17,12 @@
       </div>
     </div>
 
-    <!-- 加载状态 -->
     <div v-if="loading" class="loading-container">
       <div class="loading-spinner"></div>
       <div class="loading-text">加载中...</div>
     </div>
 
-    <!-- 教室详情内容 -->
     <div v-else class="room-detail-content">
-      <!-- 教室图片 -->
       <div class="room-image" :style="{ backgroundImage: `url(${room.imageUrl || '/placeholder.svg?height=240&width=400'})` }">
         <div class="room-status-badge" :class="{
           available: room.status === true || room.status === 1,
@@ -37,7 +33,6 @@
         </div>
       </div>
 
-      <!-- 教室信息卡片 -->
       <div class="room-info-card">
         <div class="room-header">
           <h1 class="room-name">{{ room.name }}</h1>
@@ -70,7 +65,6 @@
           </div>
         </div>
 
-        <!-- 教室描述 -->
         <div class="room-description">
           <h2 class="section-title">
             <span class="title-icon">📝</span>
@@ -79,14 +73,12 @@
           <p class="description-text">{{ room.description || '暂无介绍' }}</p>
         </div>
 
-        <!-- 预约时间选择 -->
         <div class="booking-section">
           <h2 class="section-title">
             <span class="title-icon">📅</span>
             选择预约时间
           </h2>
 
-          <!-- 日期选择器 -->
           <div class="date-selector-wrapper">
             <div class="date-selector" ref="dateSelector">
               <div
@@ -107,7 +99,6 @@
             </div>
           </div>
 
-          <!-- 时间段选择 -->
           <div class="time-slots-container">
             <div v-if="timePointsLoading" class="time-loading">
               <div class="mini-spinner"></div>
@@ -144,7 +135,6 @@
             </div>
           </div>
 
-          <!-- 区间提示 -->
           <transition name="slide-fade">
             <div v-if="selectedStartTimeId && selectedEndTimeId" class="interval-tip success">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -166,14 +156,12 @@
         </div>
       </div>
 
-      <!-- 预约表单组件 -->
       <BookingForm
           ref="bookingFormRef"
           v-model="bookingForm"
           @form-validity-change="updateFormValidity"
       />
 
-      <!-- 预约按钮 -->
       <div class="booking-actions">
         <button
             class="book-button"
@@ -196,13 +184,11 @@
       </div>
     </div>
 
-    <!-- 使用条款弹窗 -->
     <RulesModal
         v-model:show="termsModalVisible"
         @agree="proceedWithBooking"
     />
 
-    <!-- 取消预约确认弹窗 -->
     <div v-if="cancelModalVisible" class="modal-overlay" @click="cancelModalVisible = false">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
@@ -290,9 +276,30 @@ const bookingForm = reactive({
   studentId: ''
 });
 
-// 所有时间点（不再过滤available: false）
+// 所有时间点（核心修改：过滤掉已过期的时间点）
 const allTimePoints = computed(() => {
+  // 获取当前选中日期的日期对象
+  const selectedDate = availableDates.value[selectedDateIndex.value];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const targetDate = new Date(selectedDate);
+  targetDate.setHours(0, 0, 0, 0);
+
+  const currentTime = new Date();
+
   return availableTimePointsForRoom.value
+      .filter(tp => {
+        // 如果选中的是未来日期，则全部显示
+        if (targetDate > today) return true;
+
+        // 如果是今天，需要过滤掉已经过去的时间点
+        const [hours, minutes] = tp.point.split(':').map(Number);
+        const timePointTime = new Date();
+        timePointTime.setHours(hours, minutes, 0, 0);
+
+        // 如果时间点时间 >= 当前时间，则保留；否则过滤
+        return timePointTime >= currentTime;
+      })
       .sort((a, b) => a.point.localeCompare(b.point));
 });
 

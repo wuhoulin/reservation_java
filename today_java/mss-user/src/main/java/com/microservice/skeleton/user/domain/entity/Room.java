@@ -5,6 +5,7 @@ import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -47,4 +48,12 @@ public class Room {
     @ApiModelProperty("更新时间")
     @TableField(value = "updated_at", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
+
+    @ApiModelProperty("经度")
+    @TableField("longitude")
+    private BigDecimal longitude;
+
+    @ApiModelProperty("纬度")
+    @TableField("latitude")
+    private BigDecimal latitude;
 }
