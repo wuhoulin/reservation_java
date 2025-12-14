@@ -54,7 +54,7 @@ public class RoomController {
     @GetMapping("/{id}")
     @ApiOperation("获取教室详情")
     @ApiImplicitParam(name = "id", value = "教室ID", required = true, dataType = "Integer", paramType = "path")
-    public ApiResponse<RoomResponse> getRoom(@PathVariable Integer id) {
+    public ApiResponse<RoomResponse> getRoom(@PathVariable Long id) {
         RoomResponse response = roomService.getRoomById(id);
         return ApiResponse.success(response);
     }

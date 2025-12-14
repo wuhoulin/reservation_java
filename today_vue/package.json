@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@amap/amap-jsapi-loader": "^1.0.1",
     "@element-plus/icons-vue": "^2.3.1",
     "@form-create/designer": "^3.2.10",
     "@form-create/element-ui": "^2.6.3",
@@ -23,6 +24,7 @@
     "lucide-vue-next": "^0.474.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^2.7.570",
+    "pinia": "^3.0.4",
     "vconsole": "^3.15.1",
     "vue": "^3.5.13",
     "vue-draggable-next": "^2.2.1",

@@ -3,13 +3,7 @@
 <mapper namespace="com.microservice.skeleton.user.mapper.ReservationMapper">
 
 
-    <select id="findByUserId" resultType="com.microservice.skeleton.user.domain.entity.Reservation">
-        SELECT r.*, ra.reason
-        FROM reservations r
-                 LEFT JOIN reservation_approvals ra ON r.id = ra.reservation_id
-        WHERE r.user_id = #{userId} AND (#{status} IS NULL OR r.status = #{status})
-        ORDER BY r.reservation_date DESC, r.created_at DESC
-    </select>
+
 
     <select id="countByUserIdAndStatusAndCancelTimeAfter" resultType="int">
         SELECT COUNT(1)

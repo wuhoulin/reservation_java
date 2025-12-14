@@ -48,7 +48,7 @@ public class ReservationApprovalServiceImpl extends ServiceImpl<ReservationAppro
     }
 
     @Override
-    public String getLatestReasonByReservationId(Integer id) {
+    public String getLatestReasonByReservationId(Long id) {
         return reservationApprovalMapper.findLatestReasonByReservationId(id);
     }
 

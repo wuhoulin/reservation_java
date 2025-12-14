@@ -59,9 +59,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     private User updateWechatUser(UserWechat userWechat, WeChatUserInfo wechatUserInfo) {
-        // 更新微信用户信息
+        // 1. 更新微信关联表信息 (sys_user_wechat)
         userWechat.setNickname(wechatUserInfo.getNickname());
-        userWechat.setAvatarUrl(wechatUserInfo.getHeadimgurl());
         userWechat.setGender(wechatUserInfo.getSex());
         userWechat.setCountry(wechatUserInfo.getCountry());
         userWechat.setProvince(wechatUserInfo.getProvince());
@@ -73,16 +72,52 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         userWechatMapper.updateById(userWechat);
 
-        // 返回对应的系统用户
-        return this.getById(userWechat.getUserId());
+        User systemUser = this.getById(userWechat.getUserId());
+
+        if (systemUser != null) {
+            boolean needUpdate = false;
+
+            // 处理头像链接
+            String newAvatar = wechatUserInfo.getHeadimgurl();
+            if (newAvatar != null && newAvatar.startsWith("http:")) {
+                newAvatar = newAvatar.replace("http:", "https:");
+            }
+
+            // 如果头像变了，更新 sys_user
+            if (newAvatar != null && !newAvatar.equals(systemUser.getAvatar())) {
+                systemUser.setAvatar(newAvatar);
+                needUpdate = true;
+            }
+
+            if (wechatUserInfo.getNickname() != null && !wechatUserInfo.getNickname().equals(systemUser.getNickName())) {
+                systemUser.setNickName(wechatUserInfo.getNickname());
+                needUpdate = true;
+            }
+
+            if (needUpdate) {
+                systemUser.setUpdateBy("wechat_auth_update");
+                systemUser.setUpdateTime(LocalDateTime.now());
+                this.updateById(systemUser);
+                log.info("同步更新系统用户头像/昵称: userId={}", systemUser.getUserId());
+            }
+            return systemUser;
+        } else {
+            // 异常情况：有关联记录但无主用户记录（可能是脏数据），视情况处理
+            log.warn("发现异常数据：有微信关联但无系统用户, wechatId={}", userWechat.getId());
+            return null;
+        }
     }
 
     private User createNewWechatUser(WeChatUserInfo wechatUserInfo) {
+        String avatarUrl = wechatUserInfo.getHeadimgurl();
+        if (avatarUrl != null && avatarUrl.startsWith("http:")) {
+            avatarUrl = avatarUrl.replace("http:", "https:");
+        }
         // 创建系统用户
         User user = User.builder()
                 .userName("wx_" + wechatUserInfo.getOpenid().substring(0, 8)) // 生成唯一用户名
                 .userType("01") // 微信用户
-                .avatar(wechatUserInfo.getHeadimgurl())
+                .avatar(avatarUrl)
                 .sex(convertGender(wechatUserInfo.getSex()))
                 .status("0") // 正常状态
                 .delFlag("0") // 未删除
@@ -99,7 +134,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         userWechat.setOpenid(wechatUserInfo.getOpenid());
         userWechat.setUnionid(wechatUserInfo.getUnionid());
         userWechat.setNickname(wechatUserInfo.getNickname());
-        userWechat.setAvatarUrl(wechatUserInfo.getHeadimgurl());
         userWechat.setGender(wechatUserInfo.getSex());
         userWechat.setCountry(wechatUserInfo.getCountry());
         userWechat.setProvince(wechatUserInfo.getProvince());

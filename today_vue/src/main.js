@@ -6,7 +6,7 @@ import 'element-plus/dist/index.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import router from '@/router'
 import FcDesigner from '@form-create/designer'
-
+import { createPinia } from 'pinia'
 
 import VConsole from 'vconsole'
 if (process.env.NODE_ENV === 'development') {
@@ -14,10 +14,10 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 const app = createApp(App)
-
+const pinia = createPinia()
 app.use(ElementPlus, { locale: zhCn })
 app.use(router)
-
+app.use(pinia)
 app.use(FcDesigner)
 
 app.mount('#app')

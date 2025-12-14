@@ -19,7 +19,7 @@ public interface RoomService extends IService<Room> {
 
     void deleteRoom(Integer id);
 
-    RoomResponse getRoomById(Integer id);
+    RoomResponse getRoomById(Long id);
 
     List<RoomResponse> getAllRooms();
 

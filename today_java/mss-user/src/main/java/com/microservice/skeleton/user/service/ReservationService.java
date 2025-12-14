@@ -18,7 +18,7 @@ public interface ReservationService extends IService<Reservation> {
 
     RoomReservationStatusResponse getRoomReservationStatus(Integer roomId, LocalDate date);
 
-    List<ReservationVO> getReservationsByUserId(String userId, Integer status);
+
 
     void cancelReservation(String reservationNo, String userId);
 
@@ -31,4 +31,8 @@ public interface ReservationService extends IService<Reservation> {
      */
     void resubmitReservation(Integer reservationId, String userId);
     public void completeReservation(String reservationNo);
+
+    ReservationVO getReservationDetail(Integer id);
+
+    List<ReservationVO> getReservationsByUserId(String openid, Integer status);
 }

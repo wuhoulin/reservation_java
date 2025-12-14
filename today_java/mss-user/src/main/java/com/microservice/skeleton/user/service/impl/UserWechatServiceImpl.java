@@ -46,7 +46,6 @@ public class UserWechatServiceImpl extends ServiceImpl<UserWechatMapper, UserWec
 
     private UserWechat updateWechatUser(UserWechat userWechat, WeChatUserInfo wechatUserInfo) {
         userWechat.setNickname(wechatUserInfo.getNickname());
-        userWechat.setAvatarUrl(wechatUserInfo.getHeadimgurl());
         userWechat.setGender(wechatUserInfo.getSex());
         userWechat.setCountry(wechatUserInfo.getCountry());
         userWechat.setProvince(wechatUserInfo.getProvince());
@@ -68,7 +67,6 @@ public class UserWechatServiceImpl extends ServiceImpl<UserWechatMapper, UserWec
         userWechat.setOpenid(wechatUserInfo.getOpenid());
         userWechat.setUnionid(wechatUserInfo.getUnionid());
         userWechat.setNickname(wechatUserInfo.getNickname());
-        userWechat.setAvatarUrl(wechatUserInfo.getHeadimgurl());
         userWechat.setGender(wechatUserInfo.getSex());
         userWechat.setCountry(wechatUserInfo.getCountry());
         userWechat.setProvince(wechatUserInfo.getProvince());

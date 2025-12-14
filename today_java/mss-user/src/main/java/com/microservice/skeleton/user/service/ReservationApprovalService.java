@@ -13,5 +13,5 @@ public interface ReservationApprovalService extends IService<ReservationApproval
     List<ReservationApproval> getApprovalsByAdmin(Integer adminId);
     public String getStatusDescription(Integer status);
 
-    String getLatestReasonByReservationId(Integer id);
+    String getLatestReasonByReservationId(Long id);
 }

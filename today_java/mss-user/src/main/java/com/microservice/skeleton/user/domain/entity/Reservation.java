@@ -1,12 +1,14 @@
 package com.microservice.skeleton.user.domain.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Data
 @TableName("reservations")
@@ -15,7 +17,7 @@ public class Reservation {
 
     @ApiModelProperty("预约ID")
     @TableId(value = "id", type = IdType.AUTO)
-    private Integer id;
+    private Long id;
 
     @ApiModelProperty("预约编号")
     @TableField("reservation_no")
@@ -23,7 +25,7 @@ public class Reservation {
 
     @ApiModelProperty("预约教室ID")
     @TableField("room_id")
-    private Integer roomId;
+    private Long roomId;
 
     @ApiModelProperty("预约日期")
     @TableField("reservation_date")
@@ -101,4 +103,7 @@ public class Reservation {
     @ApiModelProperty("更新时间")
     @TableField(value = "updated_at", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime auditTime;
+
 }

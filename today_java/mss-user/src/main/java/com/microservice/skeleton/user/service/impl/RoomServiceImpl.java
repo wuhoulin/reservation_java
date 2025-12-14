@@ -110,7 +110,7 @@ public class RoomServiceImpl extends ServiceImpl<RoomMapper, Room> implements Ro
     }
 
     @Override
-    public RoomResponse getRoomById(Integer id) {
+    public RoomResponse getRoomById(Long id) {
         // 检查教室是否存在
         Room room = this.getById(id);
         if (room == null) {

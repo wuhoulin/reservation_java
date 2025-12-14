@@ -23,14 +23,8 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
             "AND status IN (0, 1, 4)")
     List<Reservation> findByRoomIdAndDate(@Param("roomId") Integer roomId, @Param("date") LocalDate date);
 
-    @Select("SELECT r.*, ra.reason " +
-            "FROM reservations r " +
-            "LEFT JOIN reservation_approvals ra ON r.id = ra.reservation_id " +
-            "WHERE r.user_id = #{userId} " +
-            "AND (#{status} IS NULL OR r.status = #{status}) " +
-            "ORDER BY r.reservation_date DESC, r.created_at DESC")
-    List<Reservation> findByUserId(@Param("userId") String userId,
-                                   @Param("status") Integer status);
+    @Select("SELECT * FROM reservations WHERE id = #{id}")
+    Reservation selectById(@Param("id") Integer id);
 
 
 
@@ -49,11 +43,11 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
 
 
     @Select("SELECT * FROM reservations WHERE room_id = #{roomId} AND reservation_date = #{date} " +
-            "AND status != -1 " +
+            "AND status IN (0, 1) " +  // 只检查待审核和已通过的预约
             "AND start_time_id < #{endTimeId} AND end_time_id > #{startTimeId} " +
             "FOR UPDATE")
     List<Reservation> findOverlappingReservationsForUpdate(
-            @Param("roomId") Integer roomId,
+            @Param("roomId") Long roomId,
             @Param("date") LocalDate date,
             @Param("startTimeId") Integer startTimeId,
             @Param("endTimeId") Integer endTimeId);

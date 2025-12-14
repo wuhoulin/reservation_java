@@ -19,11 +19,10 @@ export function getMyReservations(status = null) {
  * @param {string} userId - 用户ID
  * @returns {Promise}
  */
-export function cancelReservation(reservationNo, userId) {
+export function cancelReservation(reservationNo) {
     return request({
         url: `/api/reservations/${reservationNo}/cancel`,
-        method: 'patch',
-        params: { userId }
+        method: 'patch'
     })
 }
 
@@ -41,14 +40,10 @@ export function resubmitReservation(reservationId, userId) {
     })
 }
 
-/**
- * 签到
- * @param {number} reservationId - 预约ID
- * @returns {Promise}
- */
-export function checkInReservation(reservationId) {
+
+export const getReservationDetail = (reservationId) => {
     return request({
-        url: `/api/reservations/${reservationId}/checkin`,
-        method: 'post'
+        url: `/api/reservations/${reservationId}`,
+        method: 'get'
     })
 }

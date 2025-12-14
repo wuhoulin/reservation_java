@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.skeleton.user.mapper.NotificationMapper">
+
+    <resultMap id="NotificationResult" type="com.microservice.skeleton.user.domain.entity.Notification">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="type" column="type"/>
+        <result property="relatedType" column="related_type"/>
+        <result property="relatedId" column="related_id"/>
+        <result property="reservationNo" column="reservation_no"/>
+        <result property="roomId" column="room_id"/>
+        <result property="isRead" column="is_read"/>
+        <result property="readTime" column="read_time"/>
+        <result property="extraData" column="extra_data"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <sql id="selectNotificationVo">
+        select id, user_id, title, content, type, related_type, related_id, reservation_no, room_id, is_read, read_time, extra_data, created_at, updated_at from notifications
+    </sql>
+
+
+    <select id="selectNotificationById" parameterType="Long" resultMap="NotificationResult">
+        select * from notifications where id = #{id}
+    </select>
+
+    <select id="selectNotificationList" parameterType="com.microservice.skeleton.user.domain.entity.Notification" resultMap="NotificationResult">
+        select * from notifications
+        <where>
+            <if test="userId != null and userId != ''"> and user_id = #{userId}</if>
+            <if test="type != null"> and type = #{type}</if>
+            <if test="isRead != null"> and is_read = #{isRead}</if>
+            <if test="reservationNo != null and reservationNo != ''"> and reservation_no = #{reservationNo}</if>
+            <if test="roomId != null"> and room_id = #{roomId}</if>
+        </where>
+        order by created_at desc
+    </select>
+
+    <insert id="insertNotification" parameterType="com.microservice.skeleton.user.domain.entity.Notification" useGeneratedKeys="true" keyProperty="id">
+        insert into notifications (
+            user_id,
+            title,
+            content,
+            type,
+            related_type,
+            related_id,
+            reservation_no,
+            room_id,
+            is_read,
+            read_time,
+            extra_data,
+            created_at,
+            updated_at
+        ) values (
+                     #{userId},
+                     #{title},
+                     #{content},
+                     #{type},
+                     #{relatedType},
+                     #{relatedId},
+                     #{reservationNo},
+                     #{roomId},
+                     #{isRead},
+                     #{readTime},
+                     #{extraData},
+                     #{createdAt},
+                     #{updatedAt}
+                 )
+    </insert>
+
+    <update id="updateNotification" parameterType="com.microservice.skeleton.user.domain.entity.Notification">
+        update notifications
+        <set>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="content != null and content != ''">content = #{content},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="relatedType != null">related_type = #{relatedType},</if>
+            <if test="relatedId != null and relatedId != ''">related_id = #{relatedId},</if>
+            <if test="reservationNo != null and reservationNo != ''">reservation_no = #{reservationNo},</if>
+            <if test="roomId != null">room_id = #{roomId},</if>
+            <if test="isRead != null">is_read = #{isRead},</if>
+            <if test="readTime != null">read_time = #{readTime},</if>
+            <if test="extraData != null and extraData != ''">extra_data = #{extraData},</if>
+            updated_at = #{updatedAt}
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteNotificationById" parameterType="Long">
+        delete from notifications where id = #{id}
+    </delete>
+
+    <delete id="deleteNotificationByIds" parameterType="Long">
+        delete from notifications where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <update id="markAsRead" parameterType="Long">
+        update notifications
+        set is_read = 1, read_time = now(), updated_at = now()
+        where id = #{id}
+    </update>
+
+    <update id="markAllAsReadByUserId" parameterType="String">
+        update notifications
+        set is_read = 1, read_time = now(), updated_at = now()
+        where user_id = #{userId} and is_read = 0
+    </update>
+
+    <select id="countUnreadByUserId" parameterType="String" resultType="int">
+        select count(*) from notifications
+        where user_id = #{userId} and is_read = 0
+    </select>
+
+    <select id="selectUserNotifications" resultMap="NotificationResult">
+        select * from notifications
+        where user_id = #{userId}
+        order by created_at desc
+            limit #{limit} offset #{offset}
+    </select>
+
+    <delete id="deleteAllByUserId" parameterType="String">
+        delete from notifications where user_id = #{userId}
+    </delete>
+
+    <!-- NotificationMapper.xml -->
+    <select id="selectUnreadAuditNotifications" parameterType="String" resultMap="NotificationResult">
+        <include refid="selectNotificationVo"/>
+        where user_id = #{userId}
+        and is_read = 0
+        and type in (2, 3)
+        order by created_at desc
+    </select>
+</mapper>

@@ -12,6 +12,15 @@
       </router-link>
 
       <router-link
+          to="/check-in/test-id"
+          class="nav-item"
+          :class="{ active: $route.path.startsWith('/check-in') }"
+      >
+        <div class="nav-icon">📝</div>
+        <div class="nav-text">签到演示</div>
+      </router-link>
+
+      <router-link
           to="/reservations"
           class="nav-item"
           :class="{ active: $route.path.startsWith('/reservations') }"
@@ -40,6 +49,7 @@ const route = useRoute()
 </script>
 
 <style scoped>
+/* 样式保持不变 */
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -54,7 +64,7 @@ const route = useRoute()
 
 .nav-container {
   display: flex;
-  justify-content: space-around;
+  justify-content: space-around; /* 增加项后，需要调整间距 */
   align-items: center;
   max-width: 500px;
   margin: 0 auto;
@@ -69,7 +79,8 @@ const route = useRoute()
   padding: 8px 16px;
   border-radius: 8px;
   transition: all 0.3s ease;
-  min-width: 60px;
+  /* 调整 min-width 以适应 4 个或更多导航项 */
+  min-width: 55px;
 }
 
 .nav-item:hover {

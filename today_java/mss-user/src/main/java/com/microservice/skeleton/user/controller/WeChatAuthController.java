@@ -1,15 +1,16 @@
 package com.microservice.skeleton.user.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microservice.skeleton.user.domain.entity.User.User;
+import com.microservice.skeleton.user.mapper.UserMapper;
 import com.microservice.skeleton.user.service.UserService;
 import com.microservice.skeleton.user.service.UserWechatService;
 import com.microservice.skeleton.user.util.JwtTokenUtil;
 import com.microservice.skeleton.user.util.UserContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -17,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 import javax.servlet.http.HttpServletRequest;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -40,35 +42,41 @@ public class WeChatAuthController {
 
     @Autowired
     private UserWechatService userWechatService;
+
+    // 注入UserMapper，用于直接操作数据库
+    @Autowired
+    private UserMapper userMapper;
+
     /**
      * 生成微信授权URL
      */
     @GetMapping("/generate-auth-url")
     public Map<String, String> generateAuthUrl(
             @RequestParam String redirectPath,
-            @RequestParam(defaultValue = "snsapi_userinfo") String scope) { // 默认使用snsapi_userinfo
+            @RequestParam(defaultValue = "snsapi_userinfo") String scope) {
 
         try {
+            // 注意：这里建议配置为动态域名，避免硬编码
             String redirectUri = "http://ndnu-yuyue.xyz" + redirectPath;
 
-            System.out.println("=== 微信授权详细调试 ===");
-            System.out.println("AppId: " + appId);
-            System.out.println("授权范围: " + scope);
-            System.out.println("前端路径: " + redirectPath);
-            System.out.println("生成的redirect_uri: " + redirectUri);
+            log.info("=== 微信授权详细调试 ===");
+            log.info("AppId: {}", appId);
+            log.info("授权范围: {}", scope);
+            log.info("前端路径: {}", redirectPath);
+            log.info("生成的redirect_uri: {}", redirectUri);
 
             String encodedRedirectUri = URLEncoder.encode(redirectUri, "UTF-8");
-            System.out.println("编码后的redirect_uri: " + encodedRedirectUri);
+            log.info("编码后的redirect_uri: {}", encodedRedirectUri);
 
             String state = generateRandomState();
-            System.out.println("生成的state: " + state);
+            log.info("生成的state: {}", state);
 
             String authUrl = String.format(
                     "https://open.weixin.qq.com/connect/oauth2/authorize?appid=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s#wechat_redirect",
                     appId, encodedRedirectUri, scope, state);
 
-            System.out.println("完整的授权URL: " + authUrl);
-            System.out.println("=========================");
+            log.info("完整的授权URL: {}", authUrl);
+            log.info("=========================");
 
             Map<String, String> result = new HashMap<>();
             result.put("authUrl", authUrl);
@@ -93,7 +101,7 @@ public class WeChatAuthController {
         String state = request.getState();
 
         if (code == null || code.trim().isEmpty()) {
-            System.out.println("错误: code参数为空或为空字符串");
+            log.error("错误: code参数为空或为空字符串");
             throw new RuntimeException("code参数不能为空");
         }
 
@@ -102,13 +110,13 @@ public class WeChatAuthController {
                 "https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code",
                 appId, appSecret, code);
 
-        System.out.println("请求微信token URL: " + tokenUrl);
+        log.info("请求微信token URL: {}", tokenUrl);
 
         try {
             RestTemplate restTemplate = new RestTemplate();
             String tokenResponse = restTemplate.getForObject(tokenUrl, String.class);
 
-            System.out.println("微信token响应: " + tokenResponse);
+            log.info("微信token响应: {}", tokenResponse);
 
             ObjectMapper mapper = new ObjectMapper();
             Map<String, Object> tokenData = mapper.readValue(tokenResponse, new TypeReference<Map<String, Object>>() {});
@@ -120,9 +128,9 @@ public class WeChatAuthController {
                 Integer expiresIn = (Integer) tokenData.get("expires_in");
                 String scope = (String) tokenData.get("scope");
 
-                System.out.println("成功获取openid: " + openid);
-                System.out.println("access_token: " + accessToken);
-                System.out.println("scope: " + scope);
+                log.info("成功获取openid: {}", openid);
+                log.info("access_token: {}", accessToken);
+                log.info("scope: {}", scope);
 
                 WeChatUserInfo userInfo = new WeChatUserInfo();
                 userInfo.setOpenid(openid);
@@ -141,10 +149,10 @@ public class WeChatAuthController {
                                 "https://api.weixin.qq.com/sns/userinfo?access_token=%s&openid=%s&lang=zh_CN",
                                 accessToken, openid);
 
-                        System.out.println("请求用户信息URL: " + userInfoUrl);
+                        log.info("请求用户信息URL: {}", userInfoUrl);
 
                         String userInfoResponse = restTemplate.getForObject(userInfoUrl, String.class);
-                        System.out.println("用户信息响应: " + userInfoResponse);
+                        log.info("用户信息响应: {}", userInfoResponse);
 
                         Map<String, Object> userInfoData = mapper.readValue(userInfoResponse,
                                 new TypeReference<Map<String, Object>>() {});
@@ -156,33 +164,41 @@ public class WeChatAuthController {
                             userInfo.setProvince((String) userInfoData.get("province"));
                             userInfo.setCity((String) userInfoData.get("city"));
                             userInfo.setCountry((String) userInfoData.get("country"));
-                            userInfo.setHeadimgurl((String) userInfoData.get("headimgurl"));
                             userInfo.setUnionid((String) userInfoData.get("unionid"));
 
-                            System.out.println("成功获取用户详细信息:");
-                            System.out.println("昵称: " + userInfo.getNickname());
-                            System.out.println("头像: " + userInfo.getHeadimgurl());
+                            // 🟢 获取头像逻辑 (新增)
+                            if (userInfoData.containsKey("headimgurl")) {
+                                String headImgUrl = (String) userInfoData.get("headimgurl");
+                                // 微信返回的通常是http，建议转为https防止浏览器混合内容警告
+                                if (headImgUrl != null && headImgUrl.startsWith("http:")) {
+                                    headImgUrl = headImgUrl.replace("http:", "https:");
+                                }
+                                userInfo.setHeadimgurl(headImgUrl);
+                            }
 
-                            // 关键：自动创建或更新系统用户和微信用户关联
-                            systemUser = userService.createOrUpdateWechatUser(userInfo);
-                            userWechatService.createOrUpdateWechatUser(systemUser.getUserId(), userInfo);
+                            log.info("成功获取用户详细信息:");
+                            log.info("昵称: {}", userInfo.getNickname());
+                            log.info("头像: {}", userInfo.getHeadimgurl());
+
+                            // 关键：创建/更新用户，包含头像
+                            systemUser = createOrUpdateUserWithOpenid(userInfo);
 
                             log.info("微信用户授权成功: userId={}, openid={}, nickname={}",
                                     systemUser.getUserId(), openid, userInfo.getNickname());
                         } else {
-                            System.out.println("获取用户详细信息失败: " + userInfoData.get("errmsg"));
-                            // 即使没有获取到详细信息，也尝试创建基础用户
-                            systemUser = userService.createOrUpdateWechatUser(userInfo);
+                            log.error("获取用户详细信息失败: {}", userInfoData.get("errmsg"));
+                            // 即使没有详细信息，也创建基础用户（带openid）
+                            systemUser = createOrUpdateUserWithOpenid(userInfo);
                         }
                     } catch (Exception e) {
-                        System.out.println("获取用户详细信息异常: " + e.getMessage());
-                        // 异常情况下也尝试创建基础用户
-                        systemUser = userService.createOrUpdateWechatUser(userInfo);
+                        log.error("获取用户详细信息异常: {}", e.getMessage(), e);
+                        // 异常情况下也创建基础用户（带openid）
+                        systemUser = createOrUpdateUserWithOpenid(userInfo);
                     }
                 } else {
-                    System.out.println("当前授权范围: " + scope + "，无法获取用户详细信息");
-                    // 静默授权情况下创建基础用户
-                    systemUser = userService.createOrUpdateWechatUser(userInfo);
+                    log.info("当前授权范围: {}，无法获取用户详细信息", scope);
+                    // 静默授权情况下创建基础用户（带openid）
+                    systemUser = createOrUpdateUserWithOpenid(userInfo);
                 }
 
                 // 生成JWT token
@@ -191,18 +207,21 @@ public class WeChatAuthController {
                 claims.put("authTime", userInfo.getAuthTime());
                 claims.put("scope", scope);
                 claims.put("nickname", userInfo.getNickname());
-                claims.put("headimgurl", userInfo.getHeadimgurl());
+
                 if (systemUser != null) {
                     claims.put("userId", systemUser.getUserId());
                     claims.put("userName", systemUser.getUserName());
+                    claims.put("openid", systemUser.getOpenid()); // JWT中携带用户表的openid
+                    // 可以选择将头像也放入token，但token会变长，建议前端从userInfo读取
+                    // claims.put("avatar", systemUser.getAvatar());
                 }
 
                 String jwtToken = jwtTokenUtil.generateToken(openid, claims);
-                System.out.println("生成的JWT Token: " + jwtToken);
+                log.info("生成的JWT Token: {}", jwtToken);
 
                 // 将用户信息存入Session
                 httpRequest.getSession().setAttribute("currentUser", userInfo);
-                System.out.println("用户信息已存入Session: " + userInfo);
+                log.info("用户信息已存入Session: {}", userInfo);
 
                 // 设置到ThreadLocal
                 UserContext.setCurrentUser(userInfo);
@@ -216,26 +235,97 @@ public class WeChatAuthController {
                 result.put("token", jwtToken);
                 result.put("tokenType", "Bearer");
                 result.put("expiresIn", jwtTokenUtil.getRemainingTime(jwtToken));
-                result.put("userInfo", userInfo);
+                result.put("userInfo", userInfo); // 这里的userInfo现在包含头像了
                 if (systemUser != null) {
                     result.put("systemUser", systemUser);
                 }
                 result.put("timestamp", System.currentTimeMillis());
 
-                System.out.println("返回给前端的完整结果: " + result);
+                log.info("返回给前端的完整结果: {}", result);
                 return result;
             } else {
                 String errmsg = (String) tokenData.get("errmsg");
                 String errcode = String.valueOf(tokenData.get("errcode"));
-                System.out.println("获取openid失败, errcode: " + errcode + ", errmsg: " + errmsg);
+                log.error("获取openid失败, errcode: {}, errmsg: {}", errcode, errmsg);
                 throw new RuntimeException("获取openid失败: " + errmsg);
             }
         } catch (Exception e) {
-            System.out.println("解析微信响应失败: " + e.getMessage());
-            e.printStackTrace();
+            log.error("解析微信响应失败: {}", e.getMessage(), e);
             throw new RuntimeException("解析微信响应失败", e);
         }
     }
+
+    /**
+     * 核心方法：创建/更新用户（适配sys_user表结构）
+     * 基于openid唯一索引操作，包含头像处理
+     */
+    private User createOrUpdateUserWithOpenid(WeChatUserInfo userInfo) {
+        try {
+            if (userService != null) {
+                User user = userService.createOrUpdateWechatUser(userInfo);
+                if (user != null) {
+                    return user;
+                }
+            }
+
+            LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<User>()
+                    .eq(User::getOpenid, userInfo.getOpenid())
+                    .eq(User::getDelFlag, "0"); // 未删除
+
+            User existingUser = userMapper.selectOne(queryWrapper);
+
+            if (existingUser != null) {
+                existingUser.setNickName(userInfo.getNickname()); // 更新昵称
+                existingUser.setSex(userInfo.getSex() != null ? userInfo.getSex().toString() : "2"); // 0男 1女 2未知
+
+                // 🟢 更新头像：如果微信获取到了头像，则更新
+                if (userInfo.getHeadimgurl() != null && !userInfo.getHeadimgurl().isEmpty()) {
+                    existingUser.setAvatar(userInfo.getHeadimgurl());
+                }
+
+                existingUser.setUpdateBy("wechat_auth");
+                existingUser.setUpdateTime(LocalDateTime.now());
+
+                userMapper.updateById(existingUser);
+                log.info("更新微信用户信息: userId={}, openid={}, nickname={}",
+                        existingUser.getUserId(), existingUser.getOpenid(), userInfo.getNickname());
+                return existingUser;
+            } else {
+                User newUser = User.builder()
+                        .loginName("wx_" + userInfo.getOpenid().substring(0, 10)) // 生成唯一登录账号
+                        .userName(userInfo.getNickname() != null ? userInfo.getNickname() : "微信用户") // 用户名称
+                        .nickName(userInfo.getNickname() != null ? userInfo.getNickname() : "微信用户") // 昵称
+                        .userType("01") // 01注册用户
+                        .sex(userInfo.getSex() != null ? userInfo.getSex().toString() : "2") // 性别
+                        .openid(userInfo.getOpenid()) // 插入openid
+                        .status("0") // 0正常
+                        .delFlag("0") // 0存在
+                        .createBy("wechat_auth")
+                        .createTime(LocalDateTime.now())
+                        .updateBy("wechat_auth")
+                        .updateTime(LocalDateTime.now())
+                        .remark("微信授权自动注册用户，openid：" + userInfo.getOpenid())
+                        // 🟢 插入头像
+                        .avatar(userInfo.getHeadimgurl() != null ? userInfo.getHeadimgurl() : "")
+                        .build();
+
+                // 自增主键，无需手动设置userId
+                userMapper.insert(newUser);
+                log.info("新增微信用户: userId={}, openid={}, nickname={}",
+                        newUser.getUserId(), newUser.getOpenid(), newUser.getNickName());
+                return newUser;
+            }
+        } catch (Exception e) {
+            // 捕获唯一索引冲突异常（openid重复）
+            if (e.getMessage().contains("uk_openid")) {
+                log.error("创建用户失败：openid={} 已存在", userInfo.getOpenid());
+                throw new RuntimeException("该微信账号已绑定用户，请直接登录");
+            }
+            log.error("创建/更新用户失败: {}", e.getMessage(), e);
+            throw new RuntimeException("创建用户失败", e);
+        }
+    }
+
     /**
      * 刷新token接口
      */
@@ -344,6 +434,7 @@ public class WeChatAuthController {
         private String province;
         private String city;
         private String country;
+        // 🟢 新增头像字段
         private String headimgurl;
         private java.util.List<String> privilege;
         private String unionid;
@@ -353,7 +444,7 @@ public class WeChatAuthController {
         private String scope;
         private Long authTime;
 
-        // getter和setter方法...
+        // getter和setter方法
         public String getOpenid() { return openid; }
         public void setOpenid(String openid) { this.openid = openid; }
         public String getNickname() { return nickname; }
@@ -366,8 +457,11 @@ public class WeChatAuthController {
         public void setCity(String city) { this.city = city; }
         public String getCountry() { return country; }
         public void setCountry(String country) { this.country = country; }
+
+        // 🟢 头像的 Getter/Setter
         public String getHeadimgurl() { return headimgurl; }
         public void setHeadimgurl(String headimgurl) { this.headimgurl = headimgurl; }
+
         public java.util.List<String> getPrivilege() { return privilege; }
         public void setPrivilege(java.util.List<String> privilege) { this.privilege = privilege; }
         public String getUnionid() { return unionid; }
@@ -389,10 +483,10 @@ public class WeChatAuthController {
                     "openid='" + openid + '\'' +
                     ", nickname='" + nickname + '\'' +
                     ", sex=" + sex +
+                    ", headimgurl='" + headimgurl + '\'' + // 日志包含头像
                     ", province='" + province + '\'' +
                     ", city='" + city + '\'' +
                     ", country='" + country + '\'' +
-                    ", headimgurl='" + headimgurl + '\'' +
                     ", accessToken='" + accessToken + '\'' +
                     ", expiresIn=" + expiresIn +
                     ", authTime=" + authTime +
@@ -425,11 +519,15 @@ public class WeChatAuthController {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 16);
     }
 
+    /**
+     * 保存用户信息到数据库（简化版，仅日志）
+     */
     private void saveUserInfo(WeChatUserInfo userInfo) {
-        // 保存用户信息到数据库的实现
-        System.out.println("=== 保存用户信息 ===");
-        System.out.println("OpenID: " + userInfo.getOpenid());
-        System.out.println("授权时间: " + userInfo.getAuthTime());
-        System.out.println("=========================");
+        log.info("=== 保存用户信息 ===");
+        log.info("OpenID: {}", userInfo.getOpenid());
+        log.info("昵称: {}", userInfo.getNickname());
+        log.info("头像: {}", userInfo.getHeadimgurl());
+        log.info("授权时间: {}", userInfo.getAuthTime());
+        log.info("=========================");
     }
 }

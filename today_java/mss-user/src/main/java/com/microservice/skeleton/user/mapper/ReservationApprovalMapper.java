@@ -9,6 +9,6 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface ReservationApprovalMapper extends BaseMapper<ReservationApproval> {
     @Select("SELECT reason FROM reservation_approvals WHERE reservation_id = #{reservationId} ORDER BY created_at DESC LIMIT 1")
-    String findLatestReasonByReservationId(@Param("reservationId") Integer reservationId);
+    String findLatestReasonByReservationId(@Param("reservationId") Long reservationId);
 
 }

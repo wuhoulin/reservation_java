@@ -25,3 +25,11 @@ export function getAvailableTimePointsForRoom(params) {
         params: params // 直接传递平级参数，不嵌套（关键修复）
     })
 }
+
+export const getAvailableTimePoints = (params) => {
+    return request({
+        url: '/api/roomReserveDate/available',
+        method: 'get',
+        params
+    });
+};

@@ -14,7 +14,7 @@ public class ReservationRequest {
 
     @ApiModelProperty(value = "预约教室ID", required = true, example = "1")
     @NotNull(message = "教室ID不能为空")
-    private Integer roomId;
+    private Long roomId;
 
     @ApiModelProperty(value = "预约日期", required = true, example = "2025-04-22")
     @NotNull(message = "预约日期不能为空")

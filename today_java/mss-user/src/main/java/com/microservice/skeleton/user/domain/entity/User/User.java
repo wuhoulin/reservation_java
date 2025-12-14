@@ -5,7 +5,6 @@ import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.*;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 
 @Data
@@ -24,9 +23,21 @@ public class User {
     @TableField("dept_id")
     private Long deptId;
 
-    @ApiModelProperty("用户账号")
+    @ApiModelProperty("登录账号")
+    @TableField("login_name")
+    private String loginName; // 注意：你之前的实体类写的是userName，但数据库是login_name，这里要修正！
+
+    @ApiModelProperty("用户账号（冗余，建议统一为login_name）")
     @TableField("user_name")
     private String userName;
+
+    @ApiModelProperty("用户昵称")
+    @TableField("nick_name")
+    private String nickName; // 实体类补充该字段（数据库有nick_name）
+
+    @ApiModelProperty("微信openid")
+    @TableField("openid") // 新增openid字段
+    private String openid;
 
     @ApiModelProperty("用户类型（00系统用户 01微信用户）")
     @TableField("user_type")

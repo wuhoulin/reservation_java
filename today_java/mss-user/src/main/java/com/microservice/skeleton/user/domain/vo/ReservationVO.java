@@ -7,20 +7,19 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Date;
 
 @Data
 @ApiModel("预约记录视图对象")
 
 public class ReservationVO {
     @ApiModelProperty("预约ID")
-    private Integer id;
+    private Long id;
 
     @ApiModelProperty("预约编号")
     private String reservationNo;
 
     @ApiModelProperty("教室ID")
-    private Integer roomId;
+    private Long roomId;
 
     @ApiModelProperty("教室名称")
     private String roomName;
@@ -53,5 +52,39 @@ public class ReservationVO {
 
     // 新增字段：审核意见
     @ApiModelProperty("审核意见")
-    private String auditReason;  // 用来存储审核记录中的 'reason' 字段
+    private String auditReason;
+
+    @ApiModelProperty("申请部门")
+    private String department;
+
+    @ApiModelProperty("申请人姓名")
+    private String userName;
+
+    @ApiModelProperty("所属学院")
+    private String college;
+
+    @ApiModelProperty("年级专业")
+    private String major;
+
+    @ApiModelProperty("联系方式")
+    private String contact;
+
+    @ApiModelProperty("指导老师姓名")
+    private String teacherName;
+
+    @ApiModelProperty("老师联系方式")
+    private String teacherContact;
+
+    @ApiModelProperty("是否需要多媒体投屏")
+    private Integer needProjection;
+
+    @ApiModelProperty("其他需求")
+    private String otherRequirements;
+
+    @ApiModelProperty("审核时间")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime auditTime;
+
+    @ApiModelProperty("所属社区名称")
+    private String communityName;
 }

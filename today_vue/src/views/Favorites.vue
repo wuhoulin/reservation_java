@@ -65,17 +65,6 @@
 
     <!-- 收藏列表 -->
     <div v-else class="favorites-content">
-      <div class="stats-bar">
-        <div class="stat-item">
-          <span class="stat-number">{{ favorites.length }}</span>
-          <span class="stat-label">个收藏</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-number">{{ availableCount }}</span>
-          <span class="stat-label">个可预约</span>
-        </div>
-      </div>
-
       <div class="favorites-grid">
         <div
             v-for="favorite in sortedFavorites"
@@ -85,9 +74,6 @@
         >
           <!-- 教室图片 -->
           <div class="room-image" :style="{ backgroundImage: `url(${favorite.imageUrl || '/placeholder-room.jpg'})` }">
-            <div class="room-status" :class="getStatusClass(favorite)">
-              {{ getStatusText(favorite) }}
-            </div>
             <div class="favorite-badge">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -160,7 +146,6 @@
           <div class="action-buttons">
             <button
                 class="action-btn book-btn"
-                :class="{ disabled: !isRoomAvailable(favorite) }"
                 @click.stop="quickBook(favorite)"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -203,7 +188,6 @@
           </button>
           <button
               class="menu-item"
-              :class="{ disabled: !isRoomAvailable(selectedFavorite) }"
               @click="quickBook(selectedFavorite)"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -251,7 +235,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getFavorites, removeFavorite } from '@/api/favorite.js' // 修复接口命名冲突
+import { getFavorites, removeFavorite } from '@/api/favorite.js'
 
 const router = useRouter()
 
@@ -264,14 +248,14 @@ const showDeleteConfirm = ref(false)
 const selectedFavorite = ref(null)
 const sortBy = ref('time') // time, name, capacity
 
-// 排序选项（修复缺失）
+// 排序选项
 const sortOptions = [
   { value: 'time', name: '收藏时间', icon: '🕒' },
   { value: 'name', name: '名称', icon: '🔤' },
   { value: 'capacity', name: '容量', icon: '👥' }
 ]
 
-// 计算属性（修复排序功能缺失）
+// 计算属性
 const sortedFavorites = computed(() => {
   const list = [...favorites.value]
   switch (sortBy.value) {
@@ -283,10 +267,6 @@ const sortedFavorites = computed(() => {
     default:
       return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   }
-})
-
-const availableCount = computed(() => {
-  return favorites.value.filter(fav => isRoomAvailable(fav)).length
 })
 
 // 方法
@@ -332,10 +312,6 @@ const goToRoomDetail = (roomId) => {
 }
 
 const quickBook = (favorite) => {
-  if (!isRoomAvailable(favorite)) {
-    ElMessage.warning('该教室当前不可预约')
-    return
-  }
   goToRoomDetail(favorite.roomId)
   showActionMenu.value = false
 }
@@ -349,7 +325,8 @@ const handleRemoveClick = (favorite) => {
 const confirmRemove = async () => {
   if (!selectedFavorite.value) return
   try {
-    const response = await cancelFavorite(selectedFavorite.value.roomId)
+    // 修复：将 cancelFavorite 改为正确的 removeFavorite 接口
+    const response = await removeFavorite(selectedFavorite.value.roomId)
     if (response.code === 200) {
       ElMessage.success('取消收藏成功')
       const index = favorites.value.findIndex(fav => fav.id === selectedFavorite.value.id)
@@ -380,18 +357,6 @@ const shareRoom = (favorite) => {
     ElMessage.success('链接已复制到剪贴板')
   }
   showActionMenu.value = false
-}
-
-const isRoomAvailable = (favorite) => {
-  return favorite.status === 1 || favorite.status === true
-}
-
-const getStatusClass = (favorite) => {
-  return isRoomAvailable(favorite) ? 'available' : 'unavailable'
-}
-
-const getStatusText = (favorite) => {
-  return isRoomAvailable(favorite) ? '可预约' : '不可用'
 }
 
 const formatTime = (timeStr) => {
@@ -617,35 +582,6 @@ onMounted(() => {
   box-shadow: 0 8px 20px rgba(66, 153, 225, 0.4); /* 替换紫色为蓝色 */
 }
 
-/* 统计栏 */
-.stats-bar {
-  display: flex;
-  gap: 20px;
-  padding: 20px;
-  background: white;
-  margin: 0 20px 20px;
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.stat-number {
-  font-size: 24px;
-  font-weight: 700;
-  color: #4299e1; /* 替换紫色为蓝色 */
-}
-
-.stat-label {
-  font-size: 12px;
-  color: #718096;
-  margin-top: 4px;
-}
-
 /* 收藏网格 */
 .favorites-content {
   padding: 0 20px;
@@ -678,27 +614,6 @@ onMounted(() => {
   background-size: cover;
   background-position: center;
   background-color: #f7fafc;
-}
-
-.room-status {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  backdrop-filter: blur(10px);
-}
-
-.room-status.available {
-  background: rgba(16, 185, 129, 0.9);
-  color: white;
-}
-
-.room-status.unavailable {
-  background: rgba(239, 68, 68, 0.9);
-  color: white;
 }
 
 .favorite-badge {
@@ -836,16 +751,9 @@ onMounted(() => {
   color: white;
 }
 
-.book-btn:hover:not(.disabled) {
+.book-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3); /* 替换紫色为蓝色 */
-}
-
-.book-btn.disabled {
-  background: #e2e8f0;
-  color: #a0aec0;
-  cursor: not-allowed;
-  opacity: 0.6;
 }
 
 .unfavorite-btn {
@@ -942,13 +850,8 @@ onMounted(() => {
   color: #2d3748;
 }
 
-.menu-item:hover:not(.disabled) {
+.menu-item:hover {
   background: #f7fafc;
-}
-
-.menu-item.disabled {
-  color: #a0aec0;
-  cursor: not-allowed;
 }
 
 .menu-item.remove {
@@ -1045,10 +948,6 @@ onMounted(() => {
 
   .favorites-content {
     padding: 0 12px;
-  }
-
-  .stats-bar {
-    margin: 0 12px 20px;
   }
 }
 </style>

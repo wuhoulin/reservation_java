@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.skeleton.user.mapper.RoomReserveDateMapper">
+
+    <!-- 查询已占用的时间点ID -->
+    <select id="selectOccupiedTimePointIds" resultType="java.lang.Integer">
+        SELECT time_point_id
+        FROM room_reserve_date
+        WHERE room_id = #{roomId}
+          AND reserve_date = #{reserveDate}
+          AND status = 0
+    </select>
+
+    <!-- 统计区间内不可用时间点数量 -->
+    <select id="countUnavailableTimePoints" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM room_reserve_date
+        WHERE room_id = #{roomId}
+          AND reserve_date = #{reserveDate}
+          AND time_point_id BETWEEN #{startPointId} AND #{endPointId}
+          AND status = 0
+    </select>
+
+    <!-- 批量更新时间点状态（兼容原有Service调用） -->
+    <update id="batchUpdateTimePointStatus">
+        UPDATE room_reserve_date
+        SET
+        status = CASE
+        <foreach collection="timePointIds" item="timePointId" separator="">
+            WHEN time_point_id = #{timePointId} THEN #{status}
+        </foreach>
+        END,
+        <!-- 核心：status=1时置空，否则赋值 -->
+        reservation_id = CASE
+        <foreach collection="timePointIds" item="timePointId" separator="">
+            WHEN time_point_id = #{timePointId} THEN
+            <if test="status == 1">NULL</if>
+            <if test="status != 1">#{reservationId}</if>
+        </foreach>
+        END,
+        reservation_no = CASE
+        <foreach collection="timePointIds" item="timePointId" separator="">
+            WHEN time_point_id = #{timePointId} THEN
+            <if test="status == 1">NULL</if>
+            <if test="status != 1">#{reservationNo}</if>
+        </foreach>
+        END
+        WHERE
+        room_id = #{roomId}
+        AND reserve_date = #{reserveDate}
+        AND time_point_id IN
+        <foreach collection="timePointIds" item="timePointId" open="(" separator="," close=")">
+            #{timePointId}
+        </foreach>
+    </update>
+</mapper>
