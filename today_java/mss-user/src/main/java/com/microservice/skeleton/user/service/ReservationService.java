@@ -37,7 +37,7 @@ public interface ReservationService extends IService<Reservation> {
 
     ReservationVO getReservationDetail(Integer id);
 
-    List<ReservationVO> getReservationsByUserId(String openid, Integer status);
+
 
     void performCheckIn(String userId, CheckInRequest request);
 
@@ -46,4 +46,6 @@ public interface ReservationService extends IService<Reservation> {
     CheckInStateVO getCheckInState(String openid);
 
     Map<Integer, Integer> getPendingCounts(Integer roomId, LocalDate date);
+
+    List<ReservationVO> getReservationsByUserId(String openid, Integer status, Integer roomId);
 }

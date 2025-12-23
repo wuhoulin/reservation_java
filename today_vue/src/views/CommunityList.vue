@@ -282,7 +282,7 @@ onMounted(() => {
 }
 
 .icon-location::before {
-  content: '📍';
+  content: '🏠';
 }
 
 .icon-time::before {

@@ -1,7 +1,5 @@
-<!-- App.vue -->
 <template>
   <div class="app-container">
-    <!-- 审核通知弹窗 -->
     <AuditNotificationModal
         v-if="showAuditModal && currentNotification"
         v-model:visible="showAuditModal"
@@ -26,89 +24,139 @@ import { useNotificationStore } from '@/stores/notification'
 const router = useRouter()
 const store = useNotificationStore()
 
-const showAuditModal = ref(false)
+// ================== 1. 自动清除缓存逻辑 (基于参考代码优化) ==================
+const autoClearCacheOnEntry = () => {
+  // 防止在单次会话中重复清除（可选：使用 sessionStorage 标记）
+  if (sessionStorage.getItem('app_cache_cleared')) {
+    return
+  }
 
-// 计算属性
+  try {
+    console.log('App初始化：正在执行智能缓存清理...')
+
+    // 1. 定义需要【保留】的白名单 (防止用户被迫退出登录)
+    const keepKeys = [
+      'jwt_token',
+      'wechat_openid',
+      'user_info',
+      'token_expire_time',
+      'wechat_auth_state'
+    ]
+
+    // 2. 备份白名单数据
+    const savedData = {}
+    keepKeys.forEach(key => {
+      const val = localStorage.getItem(key)
+      if (val) savedData[key] = val
+    })
+
+    // 3. 清除 LocalStorage (业务数据如 reservation_data 会被清空)
+    localStorage.clear()
+
+    // 4. 还原白名单数据
+    Object.keys(savedData).forEach(key => {
+      localStorage.setItem(key, savedData[key])
+    })
+
+    // 5. 清除 SessionStorage (通常存临时状态，全清比较安全)
+    sessionStorage.clear()
+    // 重新标记已清理，防止热重载或路由切换时重复触发
+    sessionStorage.setItem('app_cache_cleared', 'true')
+
+    // 6. 清除 IndexedDB (参考你的代码逻辑)
+    if (window.indexedDB) {
+      window.indexedDB.databases().then(databases => {
+        databases.forEach(db => {
+          if (db.name) {
+            console.log('删除数据库:', db.name)
+            window.indexedDB.deleteDatabase(db.name)
+          }
+        })
+      })
+    }
+
+    // 7. 清除 Cookies (参考你的代码逻辑，排除特定cookie防止误删)
+    // 注意：如果有后端设置的 HttpOnly Cookie，前端是删不掉的
+    document.cookie.split(";").forEach(cookie => {
+      const eqPos = cookie.indexOf("=")
+      const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim()
+      // 如果 Cookie 中存了登录态，这里也要加白名单判断，否则不要执行这一步
+      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`
+    })
+
+    console.log('缓存清理完成 (已保留登录凭证)')
+
+  } catch (error) {
+    console.error('自动清除缓存异常:', error)
+  }
+}
+
+// ================== 2. 审核通知逻辑 (保持不变) ==================
+const showAuditModal = ref(false)
 const currentNotification = computed(() => store.currentNotification())
 const notificationCount = computed(() => store.auditNotifications.length)
 const hasNotifications = computed(() => store.hasUnreadNotifications())
 
-// 检查并显示通知
 const checkAndShowNotification = () => {
   if (hasNotifications.value && !showAuditModal.value) {
     showAuditModal.value = true
   }
 }
 
-// 处理标记已读
 const handleMarkRead = async (notificationId) => {
   const success = await store.markNotificationAsRead(notificationId)
-  if (success) {
-    // 如果还有通知，继续显示下一个
-    checkAndShowNotification()
-  }
+  if (success) checkAndShowNotification()
 }
 
-// 处理全部标记已读
 const handleMarkAll = async () => {
   const success = await store.markAllAsRead()
-  if (success) {
-    showAuditModal.value = false
-  }
+  if (success) showAuditModal.value = false
 }
 
-// 处理查看详情
 const handleViewDetail = (reservationNo) => {
-  router.push(`/reservations/detail/${reservationNo}`)
+  router.push('/reservations')
   showAuditModal.value = false
 }
 
-// 处理关闭弹窗
 const handleCloseModal = () => {
   showAuditModal.value = false
 }
 
-// 处理页面可见性变化
+// ================== 3. 全局监听与生命周期 ==================
+
 const handleVisibilityChange = () => {
   if (!document.hidden) {
-    // 页面变得可见时，延迟1秒检查通知
     setTimeout(() => {
       store.checkAuditNotifications()
     }, 1000)
   }
 }
 
-// 处理路由变化
-const handleRouteChange = () => {
-  // 路由变化时检查通知
-  setTimeout(() => {
-    store.checkAuditNotifications()
-  }, 300)
-}
+watch(
+    () => router.currentRoute.value.path,
+    (newPath) => {
+      setTimeout(() => {
+        store.checkAuditNotifications()
+      }, 300)
+    }
+)
 
-// 监听通知变化
 watch(() => store.auditNotifications.length, (newCount) => {
   if (newCount > 0 && !showAuditModal.value) {
-    // 延迟显示，避免在页面加载时立即弹窗
     setTimeout(() => {
       checkAndShowNotification()
     }, 1000)
   }
 })
 
-// 组件挂载时
 onMounted(() => {
-  // 开始轮询
+  // 🔥 执行自动清理
+  autoClearCacheOnEntry()
+
   store.startPolling()
-
-  // 监听页面可见性变化
   document.addEventListener('visibilitychange', handleVisibilityChange)
-
-  // 监听路由变化
-  router.afterEach(handleRouteChange)
 })
 
-// 组件卸载时
 onUnmounted(() => {
   store.stopPolling()
   document.removeEventListener('visibilitychange', handleVisibilityChange)

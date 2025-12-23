@@ -9,7 +9,9 @@ import FcDesigner from '@form-create/designer'
 import { createPinia } from 'pinia'
 
 import VConsole from 'vconsole'
-const vConsole = new VConsole()
+if (process.env.NODE_ENV === 'development') {
+    new VConsole()
+}
 
 const app = createApp(App)
 const pinia = createPinia()

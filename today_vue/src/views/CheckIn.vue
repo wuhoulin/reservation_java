@@ -1,14 +1,14 @@
 <template>
   <div class="check-in-page">
 
-    <template v-if="checkInState === 1 && taskInfo">
-      <div id="map-container"></div>
+    <div id="map-container" v-show="taskInfo"></div>
 
-      <div v-if="mapLoading" class="loading-overlay">
-        <div class="loading-content"><div class="spinner"></div><p>{{ loadingText }}</p></div>
-      </div>
+    <div v-if="mapLoading && taskInfo" class="loading-overlay">
+      <div class="loading-content"><div class="spinner"></div><p>{{ loadingText }}</p></div>
+    </div>
 
-      <div class="location-panel" v-if="!mapLoading && locationLoaded">
+    <div v-if="checkInState === 1 && !mapLoading && locationLoaded" class="ui-layer state-active">
+      <div class="location-panel">
         <div class="location-header">
           <div class="location-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -33,57 +33,95 @@
           <button class="checkin-btn" @click="showCheckInDialog" :disabled="!isInRange || loading">立即签到</button>
         </div>
       </div>
-    </template>
-
-    <div v-else-if="checkInState === 2 && taskInfo" class="upcoming-container">
-      <div class="upcoming-card">
-        <div class="icon-wrapper">
-          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#409eff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-        </div>
-        <h3>下一个活动即将开始</h3>
-
-        <div class="info-group">
-          <div class="info-row">
-            <span class="label">活动：</span>
-            <span class="val">{{ taskInfo.activityName }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">日期：</span>
-            <span class="val">{{ taskInfo.reservationDate }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">地点：</span>
-            <span class="val">{{ taskInfo.roomName }}</span>
-          </div>
-          <div class="info-row">
-            <span class="label">开始时间：</span>
-            <span class="val highlight">{{ formatTime(taskInfo.startTimeId) }}</span>
-          </div>
-        </div>
-
-        <div class="countdown-box">
-          <p>距离签到开始还有</p>
-          <div class="timer">{{ countdownText }}</div>
-        </div>
-
-        <button class="back-btn" @click="$router.push('/my-reservations')">查看预约详情</button>
-      </div>
     </div>
 
-    <div v-else class="no-task-container">
-      <div v-if="pageInitializing" class="init-loading">
-        <div class="spinner"></div>
-        <p>正在查询签到任务...</p>
-      </div>
-      <div v-else class="empty-state">
-        <div class="empty-icon">📅</div>
+    <div v-else-if="checkInState === 2 && !mapLoading" class="ui-layer state-upcoming">
+
+      <button v-if="!showUpcomingCard" class="restore-card-btn" @click="showUpcomingCard = true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        活动详情
+      </button>
+
+      <div v-if="showUpcomingCard" class="map-backdrop" @click="showUpcomingCard = false"></div>
+
+      <transition name="card-fade">
+        <div v-if="showUpcomingCard" class="upcoming-card glass-effect">
+
+          <div class="close-card-btn" @click="showUpcomingCard = false">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </div>
+
+          <div class="icon-wrapper">
+            <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#409eff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <h3>活动即将开始</h3>
+
+          <div class="info-group">
+            <div class="info-row">
+              <span class="label">活动：</span>
+              <span class="val">{{ taskInfo.activityName }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">日期：</span>
+              <span class="val">{{ taskInfo.reservationDate }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">地点：</span>
+              <span class="val">{{ taskInfo.roomName }}</span>
+            </div>
+            <div class="info-row">
+              <span class="label">开始时间：</span>
+              <span class="val highlight">{{ formatTime(taskInfo.startTime) }}</span>
+            </div>
+          </div>
+
+          <div class="countdown-box">
+            <p>距离签到开始还有</p>
+            <div class="timer">{{ countdownText }}</div>
+          </div>
+
+          <div class="map-hint">
+            <i class="el-icon-location"></i> 关闭卡片可查看地图范围
+          </div>
+
+          <button class="back-btn" @click="$router.push('/reservations')">返回列表</button>
+        </div>
+      </transition>
+    </div>
+
+    <div v-else-if="!taskInfo && !pageInitializing" class="no-task-container">
+      <div class="empty-state">
+        <div class="empty-icon-wrapper">
+          <svg width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+            <line x1="8" y1="14" x2="16" y2="14"></line>
+            <line x1="8" y1="18" x2="12" y2="18"></line>
+          </svg>
+        </div>
+
         <h3>当前暂无需要签到的活动</h3>
         <p class="empty-desc">请在活动开始前 30 分钟内进行签到</p>
         <button class="back-btn" @click="$router.push('/reservations')">查看我的预约</button>
       </div>
+    </div>
+
+    <div v-if="pageInitializing" class="init-loading-layer">
+      <div class="spinner"></div>
+      <p>正在查询签到任务...</p>
     </div>
 
     <el-dialog v-model="showCheckInDialogVisible" title="现场签到" width="90%" max-width="400px" center>
@@ -137,14 +175,17 @@ const router = useRouter()
 const MAP_KEY = 'f239feb56fe63ea40fc1fa48146420cb'
 const SECURITY_CODE = '8d1a57ba88fb091269930b809bba6c48'
 window._AMapSecurityConfig = { securityJsCode: SECURITY_CODE }
-const ALLOWED_DISTANCE = 200 // 签到范围半径
+const ALLOWED_DISTANCE = 200
 
 // ================= 状态变量 =================
 const pageInitializing = ref(true)
-const checkInState = ref(0) // 0:无, 1:可签, 2:等待
+const checkInState = ref(0)
 const taskInfo = ref(null)
 const countdownText = ref('-- : -- : --')
 let timerInterval = null
+
+// 【新增】控制卡片显隐
+const showUpcomingCard = ref(true)
 
 // 地图相关
 const mapLoading = ref(true)
@@ -153,16 +194,14 @@ const locationLoaded = ref(false)
 const loadingText = ref('正在加载地图...')
 const userLat = ref(0)
 const userLng = ref(0)
-const accuracy = ref(0)
 const distance = ref(null)
 
 const map = ref(null)
 const AMap = ref(null)
 const geolocation = ref(null)
 
-// 覆盖物
-const targetMarker = ref(null) // 目标点图标
-const rangeCircle = ref(null)  // 🟢 签到范围圈
+const targetMarker = ref(null)
+const rangeCircle = ref(null)
 
 const showCheckInDialogVisible = ref(false)
 const checkingIn = ref(false)
@@ -179,15 +218,22 @@ onMounted(async () => {
       checkInState.value = data.state
       taskInfo.value = data.taskInfo
 
-      if (checkInState.value === 1) {
+      // 无论是状态1还是状态2，只要有任务，都加载地图
+      if (checkInState.value === 1 || checkInState.value === 2) {
         initUserLocationMap()
-      } else if (checkInState.value === 2) {
-        startCountdown(data.countdownMs)
+        if (checkInState.value === 2) {
+          startCountdown(data.countdownMs)
+        }
+      } else {
+        mapLoading.value = false
       }
+    } else {
+      mapLoading.value = false
     }
   } catch (error) {
     console.error(error)
     ElMessage.error('获取任务失败')
+    mapLoading.value = false
   } finally {
     pageInitializing.value = false
   }
@@ -218,9 +264,12 @@ const updateTimerText = (ms) => {
 
 const pad = (n) => n < 10 ? '0' + n : n
 
-const formatTime = (id) => {
-  const map = { 1: '08:00', 2: '10:00', 3: '14:00', 4: '16:00', 5: '19:00' }
-  return map[id] || '即将开始'
+const formatTime = (timeStr) => {
+  if (!timeStr) return '即将开始'
+  if (typeof timeStr === 'string' && timeStr.length >= 5) {
+    return timeStr.substring(0, 5)
+  }
+  return timeStr
 }
 
 // ================= 地图 & 签到逻辑 =================
@@ -275,7 +324,6 @@ const initUserLocationMap = async () => {
       viewMode: '2D'
     })
 
-    // 🟢 绘制图标和圆圈
     drawTargetOverlays()
 
     geolocation.value = new AMap.value.Geolocation({
@@ -301,15 +349,12 @@ const initUserLocationMap = async () => {
   }
 }
 
-// 🟢 核心修改：绘制目标红点 + 范围红圈
 const drawTargetOverlays = () => {
   if (!map.value || !AMap.value || !taskInfo.value) return
 
-  // 1. 清理旧覆盖物
   if (targetMarker.value) targetMarker.value.setMap(null)
   if (rangeCircle.value) rangeCircle.value.setMap(null)
 
-  // 2. 绘制目标图标 (红点)
   targetMarker.value = new AMap.value.Marker({
     position: [taskInfo.value.longitude, taskInfo.value.latitude],
     map: map.value,
@@ -319,19 +364,17 @@ const drawTargetOverlays = () => {
     zIndex: 50
   })
 
-  // 3. 🟢 绘制范围圆圈 (红色)
   rangeCircle.value = new AMap.value.Circle({
     center: [taskInfo.value.longitude, taskInfo.value.latitude],
-    radius: ALLOWED_DISTANCE, // 使用配置的半径 (200米)
-    strokeColor: '#f56c6c',   // 边框红色
+    radius: ALLOWED_DISTANCE,
+    strokeColor: '#f56c6c',
     strokeOpacity: 0.8,
     strokeWeight: 2,
-    fillColor: '#f56c6c',     // 填充红色
+    fillColor: '#f56c6c',
     fillOpacity: 0.15,
     map: map.value
   })
 
-  // 自动缩放地图以适应圆圈范围
   map.value.setFitView([rangeCircle.value])
 }
 
@@ -347,11 +390,9 @@ const refreshLocation = async () => {
     if (status === 'complete') {
       userLat.value = result.position.lat
       userLng.value = result.position.lng
-      accuracy.value = result.accuracy
 
       updateDistance()
 
-      // 🟢 动态更新圆圈颜色：在范围内变绿，不在变红
       if (rangeCircle.value) {
         const color = isInRange.value ? '#67c23a' : '#f56c6c'
         rangeCircle.value.setOptions({
@@ -367,7 +408,6 @@ const refreshLocation = async () => {
   })
 }
 
-// ================= 签到交互 =================
 const showCheckInDialog = () => {
   if (!isInRange.value) {
     ElMessage.warning(`距离太远，请在${ALLOWED_DISTANCE}米范围内签到`)
@@ -414,17 +454,76 @@ onUnmounted(() => {
 <style scoped>
 .check-in-page { width: 100%; height: 100vh; position: relative; overflow: hidden; background: #f5f7fa; }
 #map-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
-.loading-overlay, .no-task-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #f5f7fa; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; }
-.loading-overlay { background: rgba(255,255,255,0.9); }
-.loading-content, .init-loading { text-align: center; }
-.spinner { width: 50px; height: 50px; border: 4px solid #e0e0e0; border-top: 4px solid #409eff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.ui-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 100; pointer-events: none; }
+
+.location-panel {
+  position: absolute; bottom: 30px; left: 20px; right: 20px;
+  background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+  border-radius: 16px; padding: 20px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  pointer-events: auto; animation: slideUp 0.4s ease;
+}
+
+.state-upcoming { display: flex; justify-content: center; align-items: center; padding: 20px; }
+.map-backdrop {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.2); backdrop-filter: blur(2px);
+  pointer-events: auto; /* 点击遮罩层也可以关闭 */
+}
+
+.upcoming-card {
+  position: relative; /* 为了定位关闭按钮 */
+  background: rgba(255, 255, 255, 0.95);
+  width: 100%; max-width: 340px; padding: 30px 25px;
+  border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+  text-align: center; z-index: 101; pointer-events: auto;
+}
+
+.glass-effect { backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.5); }
+
+/* 关闭按钮样式 */
+.close-card-btn {
+  position: absolute; top: 15px; right: 15px;
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 50%;
+  transition: background 0.2s;
+}
+.close-card-btn:active { background: rgba(0,0,0,0.05); }
+
+/* 恢复按钮样式 */
+.restore-card-btn {
+  position: absolute; top: 20px; left: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #409eff; border: none; border-radius: 20px;
+  padding: 8px 16px; font-size: 14px; font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  display: flex; align-items: center; gap: 6px;
+  pointer-events: auto; cursor: pointer;
+  z-index: 102; transition: all 0.3s;
+}
+.restore-card-btn:active { transform: scale(0.95); }
+
+/* Vue 过渡动画 */
+.card-fade-enter-active, .card-fade-leave-active { transition: opacity 0.3s, transform 0.3s; }
+.card-fade-enter-from, .card-fade-leave-to { opacity: 0; transform: scale(0.95); }
+
+/* 🟢 修复后的空状态样式 */
 .empty-state { text-align: center; padding: 40px; }
-.empty-icon { font-size: 60px; margin-bottom: 20px; }
-.empty-desc { color: #999; margin: 10px 0 30px; font-size: 14px; }
-.back-btn { padding: 10px 25px; background: #409eff; color: white; border: none; border-radius: 20px; font-size: 15px; cursor: pointer; }
-.location-panel { position: absolute; bottom: 30px; left: 20px; right: 20px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 16px; padding: 20px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15); z-index: 100; animation: slideUp 0.4s ease; }
-@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.empty-icon-wrapper { margin-bottom: 20px; display: flex; justify-content: center; }
+/* 强制放大 SVG 图标 */
+.empty-icon-wrapper svg {
+  width: 120px; height: 120px; color: #e2e8f0; stroke-width: 1.5;
+}
+.empty-state h3 { margin: 0 0 10px; color: #333; font-size: 18px; font-weight: 600; }
+.empty-desc { color: #999; margin: 0 0 30px; font-size: 14px; }
+.back-btn { padding: 12px 30px; background: #409eff; color: white; border: none; border-radius: 25px; font-size: 15px; cursor: pointer; box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3); transition: all 0.3s; }
+.back-btn:active { transform: scale(0.95); }
+
+/* 其他样式保持不变 */
+.map-hint { margin-top: 15px; font-size: 12px; color: #909399; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.loading-overlay, .no-task-container, .init-loading-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #f5f7fa; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; }
+.loading-overlay { background: rgba(255,255,255,0.9); }
 .location-header { display: flex; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
 .location-icon { width: 40px; height: 40px; background: #ecf5ff; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px; }
 .location-title { font-size: 18px; font-weight: 600; color: #333; }
@@ -442,19 +541,16 @@ onUnmounted(() => {
 .refresh-btn:active { background: #e6e8eb; }
 .checkin-btn { background: #409eff; color: white; box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3); }
 .checkin-btn:disabled { background: #a0cfff; cursor: not-allowed; box-shadow: none; }
-.loading-icon { animation: rotate 1s linear infinite; }
-.upcoming-container { height: 100vh; background: #f5f7fa; display: flex; justify-content: center; align-items: center; padding: 20px; }
-.upcoming-card { background: white; width: 100%; max-width: 340px; padding: 40px 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.08); text-align: center; animation: fadeIn 0.5s ease; }
-.icon-wrapper { margin-bottom: 20px; }
-.upcoming-card h3 { margin: 0 0 30px; color: #333; font-size: 20px; font-weight: 600; }
-.info-group { text-align: left; background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 25px; }
-.info-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 15px; color: #666; border-bottom: 1px dashed #eee; padding-bottom: 8px; }
+.icon-wrapper { margin-bottom: 15px; }
+.upcoming-card h3 { margin: 0 0 20px; color: #333; font-size: 20px; font-weight: 600; }
+.info-group { text-align: left; background: rgba(248, 250, 252, 0.8); padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+.info-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; color: #666; border-bottom: 1px dashed #eee; padding-bottom: 8px; }
 .info-row:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
 .info-row .val { color: #333; font-weight: 500; }
 .info-row .highlight { color: #409eff; font-weight: bold; }
-.countdown-box { margin: 30px 0; background: linear-gradient(135deg, #ecf5ff, #e6f1fc); padding: 20px; border-radius: 12px; border: 1px solid #d9ecff; }
-.countdown-box p { margin: 0 0 10px; font-size: 13px; color: #79bbff; font-weight: 500; }
-.timer { font-size: 24px; font-weight: bold; color: #409eff; font-family: 'Monaco', monospace; letter-spacing: 1px; }
+.countdown-box { margin: 20px 0; background: linear-gradient(135deg, rgba(236,245,255,0.8), rgba(230,241,252,0.8)); padding: 15px; border-radius: 12px; border: 1px solid #d9ecff; }
+.countdown-box p { margin: 0 0 5px; font-size: 12px; color: #79bbff; font-weight: 500; }
+.timer { font-size: 22px; font-weight: bold; color: #409eff; font-family: 'Monaco', monospace; letter-spacing: 1px; }
 .room-info-card { display: flex; align-items: center; background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 20px; }
 .room-icon { width: 48px; height: 48px; background: #ecf5ff; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 15px; }
 .room-info h3 { margin: 0 0 5px; font-size: 16px; color: #333; }
@@ -472,5 +568,8 @@ onUnmounted(() => {
 .confirm-checkin-btn { background: #409eff; color: white; }
 .confirm-checkin-btn.disabled { background: #a0cfff; }
 .cancel-btn { background: #f5f7fa; color: #606266; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.spinner { width: 50px; height: 50px; border: 4px solid #e0e0e0; border-top: 4px solid #409eff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 </style>

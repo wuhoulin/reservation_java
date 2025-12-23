@@ -182,7 +182,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         userProfileVO.setCollege(user.getCollege());
         userProfileVO.setMajor(user.getMajor());
         userProfileVO.setPhonenumber(user.getPhonenumber());
-
+        userProfileVO.setEmail(user.getEmail());
         return userProfileVO;
     }
 
@@ -206,6 +206,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setMajor(userProfileDTO.getMajor());
         user.setPhonenumber(userProfileDTO.getPhonenumber());
         user.setUpdateTime(LocalDateTime.now());
+        user.setEmail(userProfileDTO.getEmail());
         user.setUpdateBy("user"); // 标记为用户自己更新
 
         boolean success = this.updateById(user);

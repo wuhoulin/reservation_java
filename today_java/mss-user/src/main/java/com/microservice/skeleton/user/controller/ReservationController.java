@@ -89,40 +89,33 @@ public class ReservationController {
         return ApiResponse.success();
     }
 
-    // 🔥🔥🔥🔥🔥 核心修改位置 🔥🔥🔥🔥🔥
     @GetMapping("/user/reservations")
     @ApiOperation("获取当前用户的预约记录")
     public ApiResponse<List<ReservationVO>> getCurrentUserReservations(
-            // 这里加上 value = "status"，显式告诉 Spring 去接收 URL 中的 status 参数
-            @RequestParam(value = "status", required = false) String statusStr) {
+            @RequestParam(value = "status", required = false) String statusStr,
+            @RequestParam(value = "roomId", required = false) Integer roomId) {
 
         String openid = UserContext.getCurrentOpenid();
 
-        // 1. 校验用户登录状态
+        // 校验用户登录状态
         if (openid == null || openid.trim().isEmpty()) {
             log.error("获取用户预约记录失败：用户未登录，状态参数：{}", statusStr);
             return ApiResponse.error(401, "用户未登录或身份验证失败，请重新登录后再试");
         }
 
-        // 2. 处理status参数，容错转换为Integer
+        // 处理status参数
         Integer status = null;
-        if (statusStr != null && !statusStr.trim().isEmpty()) {
+        if (statusStr != null && !statusStr.trim().isEmpty() && !"all".equalsIgnoreCase(statusStr)) {
             try {
-                // 过滤掉NaN、空字符串等无效值
                 status = Integer.parseInt(statusStr.trim());
-                // 可选：校验status的合法范围（根据业务定义，比如0-4）
-                if (status < 0 || status > 4) {
-                    log.warn("获取用户预约记录：状态值超出合法范围，status={}，用户={}", status, openid);
-                    status = null; // 非法值置为null，查询全部
-                }
             } catch (NumberFormatException e) {
                 log.warn("获取用户预约记录：状态参数格式错误，statusStr={}，用户={}", statusStr, openid, e);
-                status = null; // 转换失败时置为null，查询全部
+                status = null;
             }
         }
 
-        // 3. 调用服务查询
-        List<ReservationVO> reservations = reservationService.getReservationsByUserId(openid, status);
+        // 调用服务查询，传入roomId
+        List<ReservationVO> reservations = reservationService.getReservationsByUserId(openid, status, roomId);
         return ApiResponse.success(reservations);
     }
 

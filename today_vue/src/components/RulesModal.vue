@@ -2,7 +2,7 @@
   <div class="modal-overlay" v-if="show" @click.self="close">
     <div class="modal-content">
       <div class="modal-header">
-        <div class="modal-title">四、场地借用注意事项</div>
+        <div class="modal-title">场地借用注意事项</div>
         <div class="modal-close" @click="close">×</div>
       </div>
       <div class="modal-body">

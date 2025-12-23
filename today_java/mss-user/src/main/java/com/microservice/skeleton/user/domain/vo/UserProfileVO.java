@@ -35,4 +35,7 @@ public class UserProfileVO {
 
     @ApiModelProperty("联系方式")
     private String phonenumber;
+
+    @ApiModelProperty("邮箱")
+    private String email;
 }

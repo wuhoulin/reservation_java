@@ -6,6 +6,7 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import org.hibernate.validator.constraints.Length;
 
+import javax.validation.constraints.Email;
 import javax.validation.constraints.Pattern;
 
 @Data
@@ -32,4 +33,9 @@ public class UserProfileDTO {
     @Pattern(regexp = "^(|1[3-9]\\d{9})$", message = "手机号格式不正确")
     @Length(max = 11, message = "手机号长度不能超过11个字符")
     private String phonenumber;
+
+    @ApiModelProperty(value = "邮箱")
+    @Email(message = "邮箱格式不正确")
+    @Length(max = 50, message = "邮箱长度不能超过50个字符")
+    private String email;
 }

@@ -105,38 +105,6 @@ public class RedisDiagnosisController {
         return result;
     }
 
-    @GetMapping("/reservation/{reservationNo}")
-    public Map<String, Object> getReservationStatus(@PathVariable String reservationNo) {
-        Map<String, Object> result = new HashMap<>();
-
-        try {
-            // 这里需要根据您的实际情况获取预约状态
-            // 假设您有一个方法可以查询预约
-            List<ReservationVO> reservations = reservationService.getReservationsByUserId("test_user", null);
-            ReservationVO target = reservations.stream()
-                    .filter(r -> reservationNo.equals(r.getReservationNo()))
-                    .findFirst()
-                    .orElse(null);
-
-            if (target != null) {
-                result.put("success", true);
-                result.put("reservationNo", target.getReservationNo());
-                result.put("status", target.getStatus());
-                result.put("statusDesc", target.getStatusDesc());
-                result.put("startTime", target.getStartTime());
-                result.put("endTime", target.getEndTime());
-            } else {
-                result.put("success", false);
-                result.put("message", "预约不存在");
-            }
-
-        } catch (Exception e) {
-            result.put("success", false);
-            result.put("error", e.getMessage());
-        }
-
-        return result;
-    }
 
     @PostMapping("/delay-queue/trigger")
     public Map<String, Object> triggerDelayQueueProcess() {
@@ -212,96 +180,9 @@ public class RedisDiagnosisController {
         return result;
     }
 
-    @PostMapping("/test-complete/{reservationNo}")
-    public Map<String, Object> testCompleteReservation(@PathVariable String reservationNo) {
-        Map<String, Object> result = new HashMap<>();
 
-        try {
-            log.info("🧪 测试完成预约: {}", reservationNo);
 
-            // 先查询当前状态
-            List<ReservationVO> before = reservationService.getReservationsByUserId("oAnc9vgK495dktuO_F43WR3fkrzg", null);
-            ReservationVO beforeStatus = before.stream()
-                    .filter(r -> reservationNo.equals(r.getReservationNo()))
-                    .findFirst()
-                    .orElse(null);
 
-            if (beforeStatus == null) {
-                result.put("success", false);
-                result.put("message", "预约不存在");
-                return result;
-            }
-
-            result.put("beforeStatus", beforeStatus.getStatus());
-            result.put("beforeStatusDesc", beforeStatus.getStatusDesc());
-
-            // 执行完成操作
-            reservationService.completeReservation(reservationNo);
-
-            // 等待一下让事务提交
-            Thread.sleep(500);
-
-            // 查询更新后的状态
-            List<ReservationVO> after = reservationService.getReservationsByUserId("oAnc9vgK495dktuO_F43WR3fkrzg", null);
-            ReservationVO afterStatus = after.stream()
-                    .filter(r -> reservationNo.equals(r.getReservationNo()))
-                    .findFirst()
-                    .orElse(null);
-
-            if (afterStatus != null) {
-                result.put("success", true);
-                result.put("afterStatus", afterStatus.getStatus());
-                result.put("afterStatusDesc", afterStatus.getStatusDesc());
-                result.put("statusChanged", !beforeStatus.getStatus().equals(afterStatus.getStatus()));
-                result.put("message", "测试完成");
-            } else {
-                result.put("success", false);
-                result.put("message", "更新后查询失败");
-            }
-
-        } catch (Exception e) {
-            result.put("success", false);
-            result.put("error", e.getMessage());
-            log.error("测试完成预约失败", e);
-        }
-
-        return result;
-    }
-
-    @GetMapping("/reservation-detail/{reservationNo}")
-    public Map<String, Object> getReservationDetail(@PathVariable String reservationNo) {
-        Map<String, Object> result = new HashMap<>();
-
-        try {
-            // 使用正确的用户ID查询
-            List<ReservationVO> reservations = reservationService.getReservationsByUserId("oAnc9vgK495dktuO_F43WR3fkrzg", null);
-            ReservationVO target = reservations.stream()
-                    .filter(r -> reservationNo.equals(r.getReservationNo()))
-                    .findFirst()
-                    .orElse(null);
-
-            if (target != null) {
-                result.put("success", true);
-                result.put("reservationNo", target.getReservationNo());
-                result.put("status", target.getStatus());
-                result.put("statusDesc", target.getStatusDesc());
-                result.put("activityName", target.getActivityName());
-                result.put("startTime", target.getStartTime());
-                result.put("endTime", target.getEndTime());
-                result.put("roomName", target.getRoomName());
-                result.put("createdAt", target.getCreatedAt());
-            } else {
-                result.put("success", false);
-                result.put("message", "预约不存在");
-            }
-
-        } catch (Exception e) {
-            result.put("success", false);
-            result.put("error", e.getMessage());
-        }
-
-        return result;
-    }
 
     @PostMapping("/force-status-update/{reservationNo}")
     public Map<String, Object> forceStatusUpdate(@PathVariable String reservationNo,

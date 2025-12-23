@@ -90,114 +90,6 @@
 
     <div class="form-grid">
       <div class="form-group">
-        <label class="form-label">
-          使用人姓名
-          <span class="required">*</span>
-        </label>
-        <div class="input-wrapper">
-          <input
-              v-model="formData.userName"
-              type="text"
-              class="form-input"
-              placeholder="请输入使用人姓名"
-              @blur="validateField('userName')"
-              @input="validateField('userName')"
-              @focus="markFieldTouched('userName')"
-          />
-          <i v-if="touched.userName && !errors.userName" class="valid-icon">✓</i>
-          <i v-if="touched.userName && errors.userName" class="error-icon">!</i>
-        </div>
-        <span v-if="touched.userName && errors.userName" class="error-message">{{ errors.userName }}</span>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">
-          学号
-          <span class="required">*</span>
-        </label>
-        <div class="input-wrapper">
-          <input
-              v-model="formData.studentId"
-              type="text"
-              class="form-input"
-              placeholder="请输入学号"
-              @blur="validateField('studentId')"
-              @input="validateField('studentId')"
-              @focus="markFieldTouched('studentId')"
-          />
-          <i v-if="touched.studentId && !errors.studentId" class="valid-icon">✓</i>
-          <i v-if="touched.studentId && errors.studentId" class="error-icon">!</i>
-        </div>
-        <span v-if="touched.studentId && errors.studentId" class="error-message">{{ errors.studentId }}</span>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">
-          学院
-          <span class="required">*</span>
-        </label>
-        <div class="input-wrapper">
-          <input
-              v-model="formData.college"
-              type="text"
-              class="form-input"
-              placeholder="请输入所属学院"
-              @blur="validateField('college')"
-              @input="validateField('college')"
-              @focus="markFieldTouched('college')"
-          />
-          <i v-if="touched.college && !errors.college" class="valid-icon">✓</i>
-          <i v-if="touched.college && errors.college" class="error-icon">!</i>
-        </div>
-        <span v-if="touched.college && errors.college" class="error-message">{{ errors.college }}</span>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">
-          年级专业
-          <span class="required">*</span>
-        </label>
-        <div class="input-wrapper">
-          <input
-              v-model="formData.major"
-              type="text"
-              class="form-input"
-              placeholder="请输入年级专业"
-              @blur="validateField('major')"
-              @input="validateField('major')"
-              @focus="markFieldTouched('major')"
-          />
-          <i v-if="touched.major && !errors.major" class="valid-icon">✓</i>
-          <i v-if="touched.major && errors.major" class="error-icon">!</i>
-        </div>
-        <span v-if="touched.major && errors.major" class="error-message">{{ errors.major }}</span>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">
-        联系方式
-        <span class="required">*</span>
-      </label>
-      <div class="input-wrapper">
-        <input
-            v-model="formData.contact"
-            type="text"
-            class="form-input"
-            placeholder="请输入11位手机号码"
-            @blur="validateContact"
-            @input="validateContact"
-            @focus="markFieldTouched('contact')"
-        />
-        <i v-if="touched.contact && !errors.contact" class="valid-icon">✓</i>
-        <i v-if="touched.contact && errors.contact" class="error-icon">!</i>
-      </div>
-      <span v-if="touched.contact && errors.contact" class="error-message">{{ errors.contact }}</span>
-    </div>
-
-
-    <div class="form-grid">
-      <div class="form-group">
         <label class="form-label">指导老师姓名</label>
         <div class="input-wrapper">
           <input
@@ -256,11 +148,6 @@ const props = defineProps({
       department: '',
       attendees: 1,
       needProjection: false,
-      userName: '',
-      studentId: '',
-      college: '',
-      major: '',
-      contact: '',
       teacherName: '',
       teacherContact: '',
       otherRequirements: ''
@@ -281,11 +168,6 @@ const errors = reactive({
   activityName: '',
   department: '',
   attendees: '',
-  userName: '',
-  studentId: '',
-  college: '',
-  major: '',
-  contact: '',
   teacherContact: ''
 });
 
@@ -294,11 +176,6 @@ const touched = reactive({
   activityName: false,
   department: false,
   attendees: false,
-  userName: false,
-  studentId: false,
-  college: false,
-  major: false,
-  contact: false,
   teacherContact: false
 });
 
@@ -307,15 +184,6 @@ const validationRules = {
   activityName: (value) => !value.trim() ? '活动名称不能为空' : '',
   department: (value) => !value.trim() ? '申请部门不能为空' : '',
   attendees: (value) => value < 1 || value > 100 ? '人数必须在1-100之间' : '',
-  userName: (value) => !value.trim() ? '使用人姓名不能为空' : '',
-  studentId: (value) => !value.trim() ? '学号不能为空' : '',
-  college: (value) => !value.trim() ? '学院不能为空' : '',
-  major: (value) => !value.trim() ? '年级专业不能为空' : '',
-  contact: (value) => {
-    if (!value.trim()) return '联系方式不能为空';
-    if (!/^1[3-9]\d{9}$/.test(value.trim())) return '请输入有效的11位手机号码';
-    return '';
-  },
   teacherContact: (value) => {
     if (value.trim() && !/^1[3-9]\d{9}$/.test(value.trim())) return '请输入有效的11位手机号码';
     return '';
@@ -329,13 +197,6 @@ const validateField = (fieldName) => {
   checkFormValidity(false);
 };
 
-// 验证联系方式
-const validateContact = () => {
-  const value = formData.value.contact;
-  errors.contact = validationRules.contact(value);
-  checkFormValidity(false);
-};
-
 // 验证指导老师联系方式
 const validateTeacherContact = () => {
   const value = formData.value.teacherContact;
@@ -346,18 +207,18 @@ const validateTeacherContact = () => {
 // 表单整体有效性校验
 // showErrors: 是否显示错误信息（true：显示，false：仅校验不显示）
 const checkFormValidity = (showErrors = false) => {
-  // 强制校验所有必填字段
-  const requiredFields = ['activityName', 'department', 'attendees', 'userName', 'studentId', 'college', 'major', 'contact'];
+  // 强制校验所有必填字段 (移除了个人信息字段)
+  const requiredFields = ['activityName', 'department', 'attendees'];
+
   requiredFields.forEach(field => {
     errors[field] = validationRules[field](formData.value[field]);
-    // 只有需要显示错误时才标记为touched
     if (showErrors) {
       touched[field] = true;
     }
   });
 
   // 校验非必填字段（有值时）
-  if (formData.value.teacherContact.trim() && showErrors) {
+  if (formData.value.teacherContact && formData.value.teacherContact.trim() && showErrors) {
     errors.teacherContact = validationRules.teacherContact(formData.value.teacherContact);
     touched.teacherContact = true;
   }
@@ -396,33 +257,22 @@ const markFieldTouched = (fieldName) => {
   touched[fieldName] = true;
 };
 
-// 监听表单字段变化，实时校验（仅在字段已交互后）
+// 监听表单字段变化，实时校验
 watch([
   () => formData.value.activityName,
   () => formData.value.department,
   () => formData.value.attendees,
-  () => formData.value.userName,
-  () => formData.value.studentId,
-  () => formData.value.college,
-  () => formData.value.major,
-  () => formData.value.contact,
   () => formData.value.teacherContact
 ], async (newValues, oldValues) => {
   await nextTick();
 
   Object.keys(validationRules).forEach((field, index) => {
-    const oldValue = oldValues[index] || '';
-    const newValue = newValues[index] || '';
-    // 只有字段已交互或值发生变化时才校验
-    if (touched[field] || oldValue.trim() !== newValue.trim()) {
-      errors[field] = validationRules[field](newValue);
-      // 只有值发生变化时才标记为已交互
-      if (oldValue.trim() !== newValue.trim()) {
-        touched[field] = true;
-      }
-    }
+    // 这里因为watch数组顺序和validationRules key顺序不完全一致，
+    // 简化逻辑：只要有变化就重新校验该字段
+    // 实际项目中可以更精确匹配，或者简单地调用 checkFormValidity(false)
   });
 
+  // 简单触发一次静默全局校验更新 isValid 状态
   checkFormValidity(false);
 }, { immediate: false });
 </script>
@@ -456,20 +306,14 @@ watch([
   border-radius: 2px;
 }
 
-/* --- 统一间距的核心修改 --- */
-
 .form-group {
-  /* 统一所有表单项的底部间距 */
   margin-bottom: 24px;
   position: relative;
 }
 
-/* 移除 form-grid 内部 form-group 的 margin-bottom，改用 gap 控制 */
 .form-grid .form-group {
   margin-bottom: 0;
 }
-
-/* ----------------------- */
 
 .form-label {
   display: block;
@@ -500,7 +344,6 @@ watch([
   transition: all 0.2s;
   background-color: #f8fafc;
   color: #1e293b;
-  /* 确保输入框高度统一 */
   height: 48px;
   box-sizing: border-box;
 }
@@ -521,7 +364,6 @@ watch([
   position: absolute;
   right: 16px;
   font-size: 16px;
-  /* 默认隐藏，不占用点击 */
   pointer-events: none;
 }
 
@@ -567,11 +409,9 @@ watch([
   pointer-events: none;
 }
 
-/* 复选框组特殊处理，确保间距一致 */
 .checkbox-group {
   display: flex;
   align-items: center;
-  /* 确保高度与其他输入框区域协调 */
   min-height: 48px;
   margin-bottom: 24px;
 }
@@ -657,11 +497,9 @@ watch([
   color: #94a3b8;
 }
 
-/* --- 错误信息定位核心修改 (使用绝对定位) --- */
 .error-message {
   position: absolute;
   left: 0;
-  /* 确保位于输入框底部的合理位置，不会与下一个输入框的 label 重叠 */
   bottom: -20px;
   color: #ef4444;
   font-size: 12px;
@@ -670,33 +508,33 @@ watch([
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
-  /* 初始不可见/透明 */
-  opacity: 0;
+  opacity: 0; /* 默认隐藏 */
   transition: opacity 0.2s;
 }
 
-.touched .error-message {
-  /* 仅在 touched 且有错误时显示 */
+/* 只有当输入框有错误且已被触碰时，才显示错误信息 */
+.input-wrapper:has(+ .error-message) + .error-message {
   opacity: 1;
 }
-/* ----------------------------------------- */
+/* 注意：上面的 CSS 选择器逻辑可能需要配合 v-if 才能完美生效，
+   但在 Vue 模板中我们是用 v-if="touched && error" 直接控制 DOM 的，
+   所以这里的 opacity 主要是为了过渡动画，或者直接去掉 opacity 控制由 Vue 接管即可。
+   在当前模板逻辑下，v-if 为真时元素才存在，opacity: 1 是默认的（如果没写0）。
+*/
+.error-message {
+  opacity: 1; /* 修正：Vue v-if 控制显隐，CSS 保持可见即可 */
+}
 
-
-/* 网格布局间距控制 */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  /* gap 控制水平和垂直间距 */
   gap: 24px 16px;
-  /* 确保网格底部的间距与普通表单项一致 */
   margin-bottom: 24px;
 }
 
-/* 响应式适配 */
 @media (max-width: 768px) {
   .form-grid {
     grid-template-columns: 1fr;
-    /* 手机端垂直间距保持一致 */
     gap: 24px;
   }
 }
