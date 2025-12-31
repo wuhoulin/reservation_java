@@ -6,20 +6,20 @@ import com.microservice.skeleton.user.domain.Response.ApiResponse;
 import com.microservice.skeleton.user.domain.Response.RoomFavoriteResponse;
 import com.microservice.skeleton.user.service.RoomFavoriteService;
 import com.microservice.skeleton.user.util.UserContext;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/favorites")
-@Api(tags = "教室收藏接口")
+@Tag(name = "教室收藏接口")
 public class RoomFavoriteController {
 
     private static final Logger log = LoggerFactory.getLogger(RoomFavoriteController.class);
@@ -28,11 +28,9 @@ public class RoomFavoriteController {
     private RoomFavoriteService roomFavoriteService;
 
     @PostMapping
-    @ApiOperation("收藏教室")
     public ApiResponse<Boolean> addFavorite(@Valid @RequestBody RoomFavoriteRequest request) {
         String userId = UserContext.getCurrentOpenid();
 
-        // 关键修改：移除测试用默认值，改为返回未登录错误
         if (userId == null || userId.trim().isEmpty()) {
             log.error("收藏教室失败：用户未登录，请求参数：{}", request);
             return ApiResponse.error(401, "用户未登录或身份验证失败，请重新登录后再试");
@@ -43,12 +41,11 @@ public class RoomFavoriteController {
     }
 
     @DeleteMapping("/{roomId}")
-    @ApiOperation("取消收藏")
-    @ApiImplicitParam(name = "roomId", value = "教室ID", required = true, dataType = "Integer", paramType = "path")
+    @Operation(summary = "取消收藏")
+    @Parameter(name = "roomId", description = "教室ID", required = true)
     public ApiResponse<Boolean> removeFavorite(@PathVariable Integer roomId) {
         String userId = UserContext.getCurrentOpenid();
 
-        // 关键修改：移除测试用默认值，改为返回未登录错误
         if (userId == null || userId.trim().isEmpty()) {
             log.error("取消收藏失败：用户未登录，教室ID：{}", roomId);
             return ApiResponse.error(401, "用户未登录或身份验证失败，请重新登录后再试");
@@ -59,11 +56,10 @@ public class RoomFavoriteController {
     }
 
     @GetMapping
-    @ApiOperation("获取用户的收藏列表")
+    @Operation(summary = "获取用户的收藏列表")
     public ApiResponse<List<RoomFavoriteResponse>> getUserFavorites() {
         String userId = UserContext.getCurrentOpenid();
 
-        // 关键修改：移除测试用默认值，改为返回未登录错误
         if (userId == null || userId.trim().isEmpty()) {
             log.error("获取用户收藏列表失败：用户未登录");
             return ApiResponse.error(401, "用户未登录或身份验证失败，请重新登录后再试");
@@ -74,17 +70,16 @@ public class RoomFavoriteController {
     }
 
     @GetMapping("/page")
-    @ApiOperation("分页获取用户的收藏列表")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = "current", value = "当前页码", required = true, dataType = "Integer", paramType = "query"),
-            @ApiImplicitParam(name = "size", value = "每页数量", required = true, dataType = "Integer", paramType = "query")
+    @Operation(summary = "分页获取用户的收藏列表")
+    @Parameters({
+            @Parameter(name = "current", description = "当前页码", required = true),
+            @Parameter(name = "size", description = "每页数量", required = true)
     })
     public ApiResponse<Page<RoomFavoriteResponse>> getUserFavoritesPage(
             @RequestParam(defaultValue = "1") Integer current,
             @RequestParam(defaultValue = "10") Integer size) {
         String userId = UserContext.getCurrentOpenid();
 
-        // 关键修改：移除测试用默认值，改为返回未登录错误
         if (userId == null || userId.trim().isEmpty()) {
             log.error("分页获取用户收藏列表失败：用户未登录，页码：{}，每页数量：{}", current, size);
             return ApiResponse.error(401, "用户未登录或身份验证失败，请重新登录后再试");
@@ -95,12 +90,11 @@ public class RoomFavoriteController {
     }
 
     @GetMapping("/check/{roomId}")
-    @ApiOperation("检查是否收藏了某个教室")
-    @ApiImplicitParam(name = "roomId", value = "教室ID", required = true, dataType = "Integer", paramType = "path")
+    @Operation(summary = "检查是否收藏了某个教室")
+    @Parameter(name = "roomId", description = "教室ID", required = true)
     public ApiResponse<Boolean> isFavorited(@PathVariable Integer roomId) {
         String userId = UserContext.getCurrentOpenid();
 
-        // 关键修改：移除测试用默认值，改为返回未登录错误
         if (userId == null || userId.trim().isEmpty()) {
             log.error("检查教室收藏状态失败：用户未登录，教室ID：{}", roomId);
             return ApiResponse.error(401, "用户未登录或身份验证失败，请重新登录后再试");
@@ -111,11 +105,9 @@ public class RoomFavoriteController {
     }
 
     @GetMapping("/count")
-    @ApiOperation("获取用户的收藏数量")
     public ApiResponse<Long> getFavoriteCount() {
         String userId = UserContext.getCurrentOpenid();
 
-        // 关键修改：移除测试用默认值，改为返回未登录错误
         if (userId == null || userId.trim().isEmpty()) {
             log.error("获取用户收藏数量失败：用户未登录");
             return ApiResponse.error(401, "用户未登录或身份验证失败，请重新登录后再试");

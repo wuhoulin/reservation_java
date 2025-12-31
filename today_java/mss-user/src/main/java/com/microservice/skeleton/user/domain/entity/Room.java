@@ -1,8 +1,7 @@
 package com.microservice.skeleton.user.domain.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema; // 修改
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -10,50 +9,50 @@ import java.time.LocalDateTime;
 
 @Data
 @TableName("rooms")
-@ApiModel(description = "教室信息")
+@Schema(description = "教室信息")
 public class Room {
 
-    @ApiModelProperty("教室ID")
+    @Schema(description = "教室ID")
     @TableId(value = "id", type = IdType.AUTO)
     private Integer id;
 
-    @ApiModelProperty("所属社区ID")
+    @Schema(description = "所属社区ID")
     @TableField("community_id")
     private Integer communityId;
 
-    @ApiModelProperty("教室名称")
+    @Schema(description = "教室名称")
     @TableField("name")
     private String name;
 
-    @ApiModelProperty("容纳人数")
+    @Schema(description = "容纳人数")
     @TableField("capacity")
     private Integer capacity;
 
-    @ApiModelProperty("教室图片URL")
+    @Schema(description = "教室图片URL")
     @TableField("image_url")
     private String imageUrl;
 
-    @ApiModelProperty("教室描述")
+    @Schema(description = "教室描述")
     @TableField("description")
     private String description;
 
-    @ApiModelProperty("状态：true-可用，false-不可用")
+    @Schema(description = "状态：true-可用，false-不可用")
     @TableField("status")
     private Boolean status;
 
-    @ApiModelProperty("创建时间")
+    @Schema(description = "创建时间")
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 
-    @ApiModelProperty("更新时间")
+    @Schema(description = "更新时间")
     @TableField(value = "updated_at", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
 
-    @ApiModelProperty("经度")
+    @Schema(description = "经度")
     @TableField("longitude")
     private BigDecimal longitude;
 
-    @ApiModelProperty("纬度")
+    @Schema(description = "纬度")
     @TableField("latitude")
     private BigDecimal latitude;
 }

@@ -24,7 +24,7 @@
           <span class="quick-count" :class="{ loading: loadingFavorites }">
             {{ loadingFavorites ? '' : favoriteCount }}
           </span>
-          <span class="quick-label">收藏房间</span>
+          <span class="quick-label">收藏教室</span>
         </div>
         <div class="quick-stat-item" @click="goToMessages">
           <span class="quick-count" :class="{ loading: loadingMessages }">
@@ -56,7 +56,7 @@
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
           </svg>
         </div>
-        <span class="menu-text">收藏房间</span>
+        <span class="menu-text">收藏教室</span>
         <span class="menu-arrow">›</span>
       </div>
 

@@ -12,12 +12,12 @@
       </router-link>
 
       <router-link
-          to="/check-in/test-id"
+          to="/activity-list"
           class="nav-item"
-          :class="{ active: $route.path.startsWith('/check-in') }"
+          :class="{ active: $route.path.startsWith('/activity-list') }"
       >
-        <div class="nav-icon">📝</div>
-        <div class="nav-text">签到</div>
+        <div class="nav-icon">🎉</div>
+        <div class="nav-text">活动</div>
       </router-link>
 
       <router-link
@@ -26,7 +26,7 @@
           :class="{ active: $route.path.startsWith('/reservations') }"
       >
         <div class="nav-icon">📋</div>
-        <div class="nav-text">我的预约</div>
+        <div class="nav-text">预约</div>
       </router-link>
 
       <router-link
@@ -35,7 +35,7 @@
           :class="{ active: $route.path.startsWith('/my') }"
       >
         <div class="nav-icon">👤</div>
-        <div class="nav-text">个人中心</div>
+        <div class="nav-text">我的</div>
       </router-link>
 
     </div>
@@ -49,7 +49,6 @@ const route = useRoute()
 </script>
 
 <style scoped>
-/* 样式保持不变 */
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -64,7 +63,8 @@ const route = useRoute()
 
 .nav-container {
   display: flex;
-  justify-content: space-around; /* 增加项后，需要调整间距 */
+  /* 使用 space-around 或 space-between 让图标均匀分布 */
+  justify-content: space-around;
   align-items: center;
   max-width: 500px;
   margin: 0 auto;
@@ -76,11 +76,11 @@ const route = useRoute()
   align-items: center;
   text-decoration: none;
   color: #666;
-  padding: 8px 16px;
+  padding: 8px 4px;
   border-radius: 8px;
   transition: all 0.3s ease;
-  /* 调整 min-width 以适应 4 个或更多导航项 */
-  min-width: 55px;
+  min-width: 50px;
+  flex: 1; /* 让每个项平均分配空间 */
 }
 
 .nav-item:hover {
@@ -88,7 +88,7 @@ const route = useRoute()
 }
 
 .nav-item.active {
-  color: #07c160; /* 保持激活颜色不变 */
+  color: #07c160;
 }
 
 .nav-icon {
@@ -97,7 +97,8 @@ const route = useRoute()
 }
 
 .nav-text {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
+  white-space: nowrap;
 }
 </style>

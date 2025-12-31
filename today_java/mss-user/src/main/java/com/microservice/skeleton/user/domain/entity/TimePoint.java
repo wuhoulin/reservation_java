@@ -1,37 +1,34 @@
 package com.microservice.skeleton.user.domain.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema; // 修改
 import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Data
-@TableName("time_points")  // 修改表名为 time_points
-@ApiModel(description = "时间点信息")
+@TableName("time_points")
+@Schema(description = "时间点信息") // 替换 @ApiModel
 public class TimePoint {
 
-    @ApiModelProperty("时间点ID")
+    @Schema(description = "时间点ID") // 替换 @ApiModelProperty
     @TableId(value = "id", type = IdType.AUTO)
     private Integer id;
 
-    @ApiModelProperty("时间点（格式：HH:mm:ss）")
+    @Schema(description = "时间点（格式：HH:mm:ss）")
     @TableField("point")
-    private LocalTime point;  // 替换原来的 startTime 和 endTime
+    private LocalTime point;
 
-    @ApiModelProperty("状态：1-可用，0-不可用")
+    @Schema(description = "状态：1-可用，0-不可用")
     @TableField("status")
-    private Integer status;  // 改为 Integer 类型，与数据库一致
+    private Integer status;
 
-    @ApiModelProperty("创建时间")
+    @Schema(description = "创建时间")
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 
-    @ApiModelProperty("更新时间")
+    @Schema(description = "更新时间")
     @TableField(value = "updated_at", fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
-
-    // 移除了 description 字段，因为 time_points 表中没有该字段
 }

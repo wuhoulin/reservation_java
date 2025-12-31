@@ -9,22 +9,24 @@ import com.microservice.skeleton.user.domain.vo.CheckInStateVO;
 import com.microservice.skeleton.user.domain.vo.ReservationVO;
 import com.microservice.skeleton.user.service.ReservationService;
 import com.microservice.skeleton.user.util.UserContext;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reservations")
-@Api(tags = "预约管理接口")
+@Tag(name = "预约管理接口", description = "处理教室预约、取消、签到及状态查询")
 public class ReservationController {
 
     private static final Logger log = LoggerFactory.getLogger(ReservationController.class);
@@ -33,19 +35,18 @@ public class ReservationController {
     private ReservationService reservationService;
 
     @PostMapping
-    @ApiOperation("创建预约")
+    @Operation(summary = "创建预约", description = "提交新的教室预约申请")
     public ApiResponse<ReservationResponse> createReservation(@Valid @RequestBody ReservationRequest request) {
         ReservationResponse response = reservationService.createReservation(request);
         return ApiResponse.success(response);
     }
 
     @GetMapping("/room/{roomId}/status")
-    @ApiOperation("查询教室预约状态")
+    @Operation(summary = "查询教室预约状态", description = "获取指定教室在某一天的预约占用情况")
     public ApiResponse<RoomReservationStatusResponse> getRoomReservationStatus(
-            @PathVariable Integer roomId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @Parameter(description = "教室ID") @PathVariable Integer roomId,
+            @Parameter(description = "查询日期(yyyy-MM-dd)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 
-        // 如果未指定日期，默认查询当天
         if (date == null) {
             date = LocalDate.now();
         }
@@ -55,8 +56,8 @@ public class ReservationController {
     }
 
     @PatchMapping("/{reservationNo}/cancel")
-    @ApiOperation("取消预约")
-    public ApiResponse<Void> cancelReservation(@PathVariable String reservationNo) {
+    @Operation(summary = "取消预约", description = "根据预约编号取消尚未进行的预约")
+    public ApiResponse<Void> cancelReservation(@Parameter(description = "预约编号") @PathVariable String reservationNo) {
         String openid = UserContext.getCurrentOpenid();
 
         if (openid == null || openid.trim().isEmpty()) {
@@ -69,10 +70,10 @@ public class ReservationController {
     }
 
     @PatchMapping("/{reservationId}/resubmit")
-    @ApiOperation("重新提交被退回的预约")
+    @Operation(summary = "重新提交预约", description = "修改并重新提交被退回的预约申请")
     public ApiResponse<Void> resubmitReservation(
-            @PathVariable Integer reservationId,
-            @RequestParam String userId) {
+            @Parameter(description = "原预约ID") @PathVariable Integer reservationId,
+            @Parameter(description = "用户ID") @RequestParam String userId) {
 
         String openid = UserContext.getCurrentOpenid();
         if (openid == null || openid.trim().isEmpty()) {
@@ -90,37 +91,37 @@ public class ReservationController {
     }
 
     @GetMapping("/user/reservations")
-    @ApiOperation("获取当前用户的预约记录")
+    @Operation(summary = "获取当前用户的预约记录", description = "查询当前登录用户的历史及当前预约列表")
+    @Parameters({
+            @Parameter(name = "status", description = "预约状态过滤(0-待审核, 1-已通过, 等或传'all')"),
+            @Parameter(name = "roomId", description = "教室ID过滤")
+    })
     public ApiResponse<List<ReservationVO>> getCurrentUserReservations(
             @RequestParam(value = "status", required = false) String statusStr,
             @RequestParam(value = "roomId", required = false) Integer roomId) {
 
         String openid = UserContext.getCurrentOpenid();
 
-        // 校验用户登录状态
         if (openid == null || openid.trim().isEmpty()) {
             log.error("获取用户预约记录失败：用户未登录，状态参数：{}", statusStr);
             return ApiResponse.error(401, "用户未登录或身份验证失败，请重新登录后再试");
         }
 
-        // 处理status参数
         Integer status = null;
         if (statusStr != null && !statusStr.trim().isEmpty() && !"all".equalsIgnoreCase(statusStr)) {
             try {
                 status = Integer.parseInt(statusStr.trim());
             } catch (NumberFormatException e) {
-                log.warn("获取用户预约记录：状态参数格式错误，statusStr={}，用户={}", statusStr, openid, e);
-                status = null;
+                log.warn("获取用户预约记录：状态参数格式错误，statusStr={}，用户={}", statusStr, openid);
             }
         }
 
-        // 调用服务查询，传入roomId
         List<ReservationVO> reservations = reservationService.getReservationsByUserId(openid, status, roomId);
         return ApiResponse.success(reservations);
     }
 
     @GetMapping("/latest")
-    @ApiOperation("查询最新的3条预约记录")
+    @Operation(summary = "查询最新的3条预约记录", description = "首页快捷查看最近的预约动态")
     public ApiResponse<List<ReservationVO>> getLatestReservations() {
         String openid = UserContext.getCurrentOpenid();
         if (openid == null || openid.trim().isEmpty()) {
@@ -133,8 +134,8 @@ public class ReservationController {
     }
 
     @GetMapping("/{id}")
-    @ApiOperation("获取预约详情")
-    public ApiResponse<ReservationVO> getReservationDetail(@PathVariable Integer id) {
+    @Operation(summary = "获取预约详情", description = "根据预约ID获取详细的单条预约信息")
+    public ApiResponse<ReservationVO> getReservationDetail(@Parameter(description = "预约ID") @PathVariable Integer id) {
         String openid = UserContext.getCurrentOpenid();
 
         if (openid == null || openid.trim().isEmpty()) {
@@ -150,41 +151,38 @@ public class ReservationController {
         return ApiResponse.success(reservation);
     }
 
-    /**
-     * 用户现场签到接口
-     */
     @PostMapping("/check-in")
-    public ApiResponse checkIn(@RequestBody CheckInRequest request) {
-        String userId= UserContext.getCurrentOpenid();
+    @Operation(summary = "用户现场签到", description = "用户到达现场后通过经纬度或扫码进行签到")
+    public ApiResponse<String> checkIn(@RequestBody CheckInRequest request) {
+        String userId = UserContext.getCurrentOpenid();
         reservationService.performCheckIn(userId, request);
         return ApiResponse.success("签到成功！");
     }
 
     @GetMapping("/current-check-in")
-    @ApiOperation("获取当前需要签到的预约任务")
+    @Operation(summary = "获取当前需要签到的预约任务", description = "获取当前时间点或临近时间点需要签到的预约记录")
     public ApiResponse<ReservationVO> getCurrentCheckInTask() {
         String openid = UserContext.getCurrentOpenid();
         ReservationVO task = reservationService.findCurrentCheckInTask(openid);
         if (task == null) {
-            return ApiResponse.success(null); // 没有任务
+            return ApiResponse.success(null);
         }
         return ApiResponse.success(task);
     }
 
     @GetMapping("/check-in-state")
-    @ApiOperation("获取签到页面状态")
+    @Operation(summary = "获取签到页面状态", description = "获取用户当前的整体签到权限和状态视图")
     public ApiResponse<CheckInStateVO> getCheckInState() {
         String openid = UserContext.getCurrentOpenid();
         CheckInStateVO state = reservationService.getCheckInState(openid);
         return ApiResponse.success(state);
     }
 
-
     @GetMapping("/room/{roomId}/pending-counts")
-    @ApiOperation("查询某天教室各时间段的待审核人数")
+    @Operation(summary = "查询待审核人数", description = "查询某天某教室各时间段内处于待审核状态的申请数量")
     public ApiResponse<Map<Integer, Integer>> getPendingReservationCounts(
-            @PathVariable Integer roomId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+            @Parameter(description = "教室ID") @PathVariable Integer roomId,
+            @Parameter(description = "查询日期") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
 
         Map<Integer, Integer> counts = reservationService.getPendingCounts(roomId, date);
         return ApiResponse.success(counts);

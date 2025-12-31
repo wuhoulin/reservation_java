@@ -59,67 +59,67 @@ public class RedisDelayQueueService {
     }
 
     /**
-     * 处理延时队列
+     * 处理延时队列（注释）
      */
-    @Scheduled(fixedRate = 5000)
-    public void processDelayQueue() {
-        try {
-            long now = System.currentTimeMillis();
-
-            // 获取到期的任务
-            Set<Object> expiredMessages = redisTemplate.opsForZSet()
-                    .rangeByScore(DELAY_QUEUE_KEY, 0, now);
-
-            if (expiredMessages == null || expiredMessages.isEmpty()) {
-                return;
-            }
-
-
-            for (Object messageObj : expiredMessages) {
-                try {
-                    // 转换消息对象
-                    DelayQueueMessage message = convertToDelayQueueMessage(messageObj);
-                    if (message == null) {
-
-                        redisTemplate.opsForZSet().remove(DELAY_QUEUE_KEY, messageObj);
-                        continue;
-                    }
-
-                    String reservationNo = message.getReservationNo();
-
-
-                    // 尝试处理消息
-                    boolean success = false;
-                    try {
-                        reservationService.completeReservation(reservationNo);
-
-                        // 验证是否成功
-                        Thread.sleep(300); // 等待事务提交
-                        Reservation reservation = reservationService.lambdaQuery()
-                                .eq(Reservation::getReservationNo, reservationNo)
-                                .one();
-
-                        success = reservation != null && reservation.getStatus() == 4;
-                    } catch (Exception e) {
-                        log.error("处理预约失败: {}", reservationNo, e);
-                    }
-
-                    if (success) {
-                        // 处理成功才移除
-                        Long removed = redisTemplate.opsForZSet().remove(DELAY_QUEUE_KEY, messageObj);
-                    } else {
-                        // 不移除，等待下次重试
-                    }
-
-                } catch (Exception e) {
-                    log.error("处理任务异常", e);
-                }
-            }
-
-        } catch (Exception e) {
-            log.error("处理延时队列异常", e);
-        }
-    }
+//    @Scheduled(fixedRate = 5000)
+//    public void processDelayQueue() {
+//        try {
+//            long now = System.currentTimeMillis();
+//
+//            // 获取到期的任务
+//            Set<Object> expiredMessages = redisTemplate.opsForZSet()
+//                    .rangeByScore(DELAY_QUEUE_KEY, 0, now);
+//
+//            if (expiredMessages == null || expiredMessages.isEmpty()) {
+//                return;
+//            }
+//
+//
+//            for (Object messageObj : expiredMessages) {
+//                try {
+//                    // 转换消息对象
+//                    DelayQueueMessage message = convertToDelayQueueMessage(messageObj);
+//                    if (message == null) {
+//
+//                        redisTemplate.opsForZSet().remove(DELAY_QUEUE_KEY, messageObj);
+//                        continue;
+//                    }
+//
+//                    String reservationNo = message.getReservationNo();
+//
+//
+//                    // 尝试处理消息
+//                    boolean success = false;
+//                    try {
+//                        reservationService.completeReservation(reservationNo);
+//
+//                        // 验证是否成功
+//                        Thread.sleep(300); // 等待事务提交
+//                        Reservation reservation = reservationService.lambdaQuery()
+//                                .eq(Reservation::getReservationNo, reservationNo)
+//                                .one();
+//
+//                        success = reservation != null && reservation.getStatus() == 4;
+//                    } catch (Exception e) {
+//                        log.error("处理预约失败: {}", reservationNo, e);
+//                    }
+//
+//                    if (success) {
+//                        // 处理成功才移除
+//                        Long removed = redisTemplate.opsForZSet().remove(DELAY_QUEUE_KEY, messageObj);
+//                    } else {
+//                        // 不移除，等待下次重试
+//                    }
+//
+//                } catch (Exception e) {
+//                    log.error("处理任务异常", e);
+//                }
+//            }
+//
+//        } catch (Exception e) {
+//            log.error("处理延时队列异常", e);
+//        }
+//    }
 
     /**
      * 转换消息对象 - 处理LinkedHashMap问题

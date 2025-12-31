@@ -9,13 +9,14 @@ import com.microservice.skeleton.user.service.UserService;
 import com.microservice.skeleton.user.service.UserWechatService;
 import com.microservice.skeleton.user.util.JwtTokenUtil;
 import com.microservice.skeleton.user.util.UserContext;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
-import javax.servlet.http.HttpServletRequest;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.time.LocalDateTime;

@@ -8,19 +8,19 @@ import com.microservice.skeleton.user.domain.Response.ApiResponse;
 import com.microservice.skeleton.user.domain.vo.UserProfileVO;
 import com.microservice.skeleton.user.service.UserService;
 import com.microservice.skeleton.user.util.UserContext;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest; // 修改: javax -> jakarta
+import jakarta.validation.Valid; // 修改: javax -> jakarta
 import java.util.List;
 
 @RestController
-@Api(tags = "用户接口")
+@Tag(name = "用户接口")
 @RequestMapping("/api/user")
 @CrossOrigin
 @Slf4j
@@ -30,7 +30,7 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    @ApiOperation("获取当前用户信息")
+    @Operation(summary = "获取当前用户信息")
     @GetMapping("/info")
     public ApiResponse<User> getCurrentUserInfo() {
         String openid = UserContext.getCurrentOpenid();
@@ -46,30 +46,23 @@ public class UserController {
         return ApiResponse.success(user);
     }
 
-    @ApiOperation("获取用户个人信息")
+    @Operation(summary = "获取用户个人信息")
     @GetMapping("/profile")
     public ApiResponse<UserProfileVO> getUserProfile() {
-
         String openid = UserContext.getCurrentOpenid();
-
         if (openid == null) {
-
             return ApiResponse.unauthorized(401, "用户未登录");
         }
 
         UserProfileVO userProfile = userService.getUserProfile(openid);
-
-
         if (userProfile == null) {
-
             return ApiResponse.notFound(404, "用户不存在");
         }
-
 
         return ApiResponse.success(userProfile);
     }
 
-    @ApiOperation("更新用户个人信息")
+    @Operation(summary = "更新个人资料")
     @PutMapping("/profile")
     public ApiResponse<Void> updateUserProfile(@Valid @RequestBody UserProfileDTO userProfileDTO) {
         String openid = UserContext.getCurrentOpenid();
@@ -88,14 +81,14 @@ public class UserController {
         }
     }
 
-    @ApiOperation("获取用户列表")
+    @Operation(summary = "获取所有用户列表")
     @GetMapping("/list")
     public ApiResponse<List<User>> getUserList() {
         List<User> users = userService.list();
         return ApiResponse.success(users);
     }
 
-    @ApiOperation("根据ID获取用户")
+    @Operation(summary = "根据ID获取用户")
     @GetMapping("/{userId}")
     public ApiResponse<User> getUserById(@PathVariable Long userId) {
         User user = userService.getById(userId);
@@ -105,7 +98,7 @@ public class UserController {
         return ApiResponse.success(user);
     }
 
-    @ApiOperation("更新用户信息")
+    @Operation(summary = "更新用户信息")
     @PutMapping("/update")
     public ApiResponse<User> updateUser(@RequestBody User user) {
         boolean success = userService.updateById(user);
@@ -116,7 +109,7 @@ public class UserController {
         }
     }
 
-    @ApiOperation("删除用户")
+    @Operation(summary = "删除用户")
     @DeleteMapping("/{userId}")
     public ApiResponse<Void> deleteUser(@PathVariable Long userId) {
         boolean success = userService.removeById(userId);
@@ -128,7 +121,7 @@ public class UserController {
     }
 
     @IgnoreSecurityCheck
-    @ApiOperation("检查用户名是否存在")
+    @Operation(summary = "检查用户名是否存在")
     @GetMapping("/check-username")
     public ApiResponse<Boolean> checkUsernameExists(@RequestParam String username) {
         User user = userService.findByUsername(username);

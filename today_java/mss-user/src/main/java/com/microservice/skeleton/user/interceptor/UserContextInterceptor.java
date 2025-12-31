@@ -2,11 +2,12 @@ package com.microservice.skeleton.user.interceptor;
 
 import com.microservice.skeleton.user.controller.WeChatAuthController.WeChatUserInfo;
 import com.microservice.skeleton.user.util.UserContext;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+
 
 /**
  * 用户上下文拦截器

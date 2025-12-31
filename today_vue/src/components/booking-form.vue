@@ -1,143 +1,101 @@
 <template>
   <div class="booking-form">
-    <h2 class="form-title">预约信息</h2>
+    <div class="form-section">
+      <h3 class="section-title"><span class="title-icon">📝</span>填写预约信息</h3>
 
-    <div class="form-group">
-      <label class="form-label">
-        活动名称（用途）
-        <span class="required">*</span>
-      </label>
-      <div class="input-wrapper">
+      <div class="form-item">
+        <label class="form-label">活动名称 <span class="required">*</span></label>
         <input
-            v-model="formData.activityName"
+            v-model="modelValue.activityName"
             type="text"
             class="form-input"
-            placeholder="请输入活动名称或用途"
-            @blur="validateField('activityName')"
-            @input="validateField('activityName')"
-            @focus="markFieldTouched('activityName')"
+            placeholder="请输入活动名称"
+            @blur="handleBlur('activityName')"
+            @input="handleInput('activityName')"
         />
-        <i v-if="touched.activityName && !errors.activityName" class="valid-icon">✓</i>
-        <i v-if="touched.activityName && errors.activityName" class="error-icon">!</i>
+        <span class="error-msg" v-if="touched.activityName && errors.activityName">{{ errors.activityName }}</span>
       </div>
-      <span v-if="touched.activityName && errors.activityName" class="error-message">{{ errors.activityName }}</span>
-    </div>
 
-    <div class="form-group">
-      <label class="form-label">
-        申请部门
-        <span class="required">*</span>
-      </label>
-      <div class="input-wrapper">
-        <input
-            v-model="formData.department"
-            type="text"
-            class="form-input"
-            placeholder="个人/组织名称"
-            @blur="validateField('department')"
-            @input="validateField('department')"
-            @focus="markFieldTouched('department')"
-        />
-        <i v-if="touched.department && !errors.department" class="valid-icon">✓</i>
-        <i v-if="touched.department && errors.department" class="error-icon">!</i>
-      </div>
-      <span v-if="touched.department && errors.department" class="error-message">{{ errors.department }}</span>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">
-        活动人数
-        <span class="required">*</span>
-      </label>
-      <div class="number-input-group">
-        <button
-            class="number-btn"
-            @click="decrementAttendees"
-            :disabled="formData.attendees <= 1"
-        >
-          -
-        </button>
-        <input
-            v-model.number="formData.attendees"
-            type="number"
-            class="form-input number-input"
-            min="1"
-            max="100"
-            readonly
-            @focus="markFieldTouched('attendees')"
-        />
-        <button
-            class="number-btn"
-            @click="incrementAttendees"
-            :disabled="formData.attendees >= 100"
-        >
-          +
-        </button>
-      </div>
-      <span v-if="touched.attendees && errors.attendees" class="error-message">{{ errors.attendees }}</span>
-    </div>
-
-    <div class="form-group checkbox-group">
-      <label class="checkbox-label">
-        <input
-            type="checkbox"
-            v-model="formData.needProjection"
-            class="custom-checkbox"
-        />
-        <span>需要多媒体投屏</span>
-      </label>
-    </div>
-
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">指导老师姓名</label>
-        <div class="input-wrapper">
+      <div class="form-group-row">
+        <div class="form-item half">
+          <label class="form-label">申请部门 <span class="required">*</span></label>
           <input
-              v-model="formData.teacherName"
+              v-model="modelValue.department"
               type="text"
               class="form-input"
-              placeholder="请输入指导老师姓名（如有）"
+              placeholder="申请部门"
+              @blur="handleBlur('department')"
+              @input="handleInput('department')"
           />
+          <span class="error-msg" v-if="touched.department && errors.department">{{ errors.department }}</span>
+        </div>
+
+        <div class="form-item half">
+          <label class="form-label">活动人数 <span class="required">*</span></label>
+          <div class="stepper-input">
+            <button class="stepper-btn minus" @click="updateAttendees(-1)" :disabled="modelValue.attendees <= 1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+            <input
+                v-model.number="modelValue.attendees"
+                type="tel"
+                class="form-input number-input"
+                placeholder="人数"
+                @blur="handleBlur('attendees')"
+                @input="handleInput('attendees')"
+            />
+            <button class="stepper-btn plus" @click="updateAttendees(1)">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+          </div>
+          <span class="error-msg" v-if="touched.attendees && errors.attendees">{{ errors.attendees }}</span>
         </div>
       </div>
 
-      <div class="form-group">
-        <label class="form-label">指导老师联系方式</label>
-        <div class="input-wrapper">
-          <input
-              v-model="formData.teacherContact"
-              type="text"
-              class="form-input"
-              placeholder="请输入指导老师手机号码（如有）"
-              @blur="validateTeacherContact"
-              @input="validateTeacherContact"
-              @focus="markFieldTouched('teacherContact')"
-          />
-          <i v-if="touched.teacherContact && formData.teacherContact && !errors.teacherContact" class="valid-icon">✓</i>
-          <i v-if="touched.teacherContact && errors.teacherContact" class="error-icon">!</i>
+      <div class="form-item">
+        <div class="toggle-card" :class="{ active: modelValue.needProjection }" @click="toggleProjection">
+          <div class="toggle-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <div class="toggle-content">
+            <div class="toggle-title">多媒体投屏</div>
+            <div class="toggle-desc">是否需要多媒体投屏</div>
+          </div>
+          <div class="toggle-switch">
+            <div class="switch-handle"></div>
+          </div>
         </div>
-        <span v-if="touched.teacherContact && errors.teacherContact" class="error-message">{{ errors.teacherContact }}</span>
       </div>
-    </div>
 
-    <div class="form-group">
-      <label class="form-label">其他需求</label>
-      <div class="input-wrapper textarea-wrapper">
+      <div class="form-item">
+        <label class="form-label">指导老师</label>
+        <input v-model="modelValue.teacherName" type="text" class="form-input" placeholder="选填" />
+      </div>
+
+      <div class="form-item">
+        <label class="form-label">老师联系方式</label>
+        <input v-model="modelValue.teacherContact" type="tel" class="form-input" placeholder="选填" maxlength="11" />
+      </div>
+
+      <div class="form-item">
+        <label class="form-label">其他需求</label>
         <textarea
-            v-model="formData.otherRequirements"
+            v-model="modelValue.otherRequirements"
             class="form-textarea"
-            placeholder="请输入其他需求（如有）"
-            maxlength="500"
+            placeholder="如有其他设备需求请在此说明..."
             rows="3"
         ></textarea>
-        <div class="char-counter">{{ formData.otherRequirements.length }}/500</div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, computed, watch, nextTick } from 'vue';
+import { reactive, watch } from 'vue';
 
 const props = defineProps({
   modelValue: {
@@ -155,387 +113,325 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:modelValue', 'formValidityChange']);
+const emit = defineEmits(['update:modelValue', 'form-validity-change']);
 
-// 表单数据双向绑定
-const formData = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
-});
-
-// 错误信息
+// 错误信息对象
 const errors = reactive({
   activityName: '',
   department: '',
-  attendees: '',
-  teacherContact: ''
+  attendees: ''
 });
 
-// 字段交互标记
+// 🟢 关键修复：记录字段是否被用户“碰过”
 const touched = reactive({
   activityName: false,
   department: false,
-  attendees: false,
-  teacherContact: false
+  attendees: false
 });
 
-// 验证规则
-const validationRules = {
-  activityName: (value) => !value.trim() ? '活动名称不能为空' : '',
-  department: (value) => !value.trim() ? '申请部门不能为空' : '',
-  attendees: (value) => value < 1 || value > 100 ? '人数必须在1-100之间' : '',
-  teacherContact: (value) => {
-    if (value.trim() && !/^1[3-9]\d{9}$/.test(value.trim())) return '请输入有效的11位手机号码';
-    return '';
-  }
-};
-
-// 验证单个字段
-const validateField = (fieldName) => {
-  const value = formData.value[fieldName];
-  errors[fieldName] = validationRules[fieldName](value);
-  checkFormValidity(false);
-};
-
-// 验证指导老师联系方式
-const validateTeacherContact = () => {
-  const value = formData.value.teacherContact;
-  errors.teacherContact = validationRules.teacherContact(value);
-  checkFormValidity(false);
-};
-
-// 表单整体有效性校验
-// showErrors: 是否显示错误信息（true：显示，false：仅校验不显示）
-const checkFormValidity = (showErrors = false) => {
-  // 强制校验所有必填字段 (移除了个人信息字段)
-  const requiredFields = ['activityName', 'department', 'attendees'];
-
-  requiredFields.forEach(field => {
-    errors[field] = validationRules[field](formData.value[field]);
-    if (showErrors) {
-      touched[field] = true;
+// 单字段校验逻辑
+const validateField = (field) => {
+  let isValid = true;
+  if (field === 'activityName') {
+    if (!props.modelValue.activityName) {
+      errors.activityName = '请输入活动名称';
+      isValid = false;
+    } else {
+      errors.activityName = '';
     }
-  });
-
-  // 校验非必填字段（有值时）
-  if (formData.value.teacherContact && formData.value.teacherContact.trim() && showErrors) {
-    errors.teacherContact = validationRules.teacherContact(formData.value.teacherContact);
-    touched.teacherContact = true;
   }
-
-  const isValid = Object.values(errors).every(msg => !msg);
-  emit('formValidityChange', isValid);
+  if (field === 'department') {
+    if (!props.modelValue.department) {
+      errors.department = '请输入申请部门';
+      isValid = false;
+    } else {
+      errors.department = '';
+    }
+  }
+  if (field === 'attendees') {
+    if (!props.modelValue.attendees || props.modelValue.attendees < 1) {
+      errors.attendees = '人数至少为1';
+      isValid = false;
+    } else {
+      errors.attendees = '';
+    }
+  }
   return isValid;
 };
 
-// 暴露方法给父组件
+// 🟢 用户输入时：只标记当前字段为 touched，并静默检查全局状态
+const handleInput = (field) => {
+  touched[field] = true;
+  validateField(field);
+  checkFormValidity(false); // false 表示不强制显示其他字段的错误
+};
+
+// 🟢 失去焦点时：标记当前字段为 touched
+const handleBlur = (field) => {
+  touched[field] = true;
+  validateField(field);
+  checkFormValidity(false);
+};
+
+// 🟢 全局校验方法
+// showErrors 参数：
+// true = 点击提交按钮时调用，强制把所有必填项标红
+// false = 页面加载或输入中调用，只检查逻辑，不标红未碰触的字段
+const checkFormValidity = (showErrors = true) => {
+  const v1 = validateField('activityName');
+  const v2 = validateField('department');
+  const v3 = validateField('attendees');
+
+  const isValid = v1 && v2 && v3;
+
+  if (showErrors) {
+    touched.activityName = true;
+    touched.department = true;
+    touched.attendees = true;
+  }
+
+  emit('form-validity-change', isValid);
+  return isValid;
+};
+
+// 暴露给父组件
 defineExpose({
   checkFormValidity,
   touched,
   errors
 });
 
-// 人数增减
-const incrementAttendees = () => {
-  if (formData.value.attendees < 100) {
-    formData.value.attendees++;
-    markFieldTouched('attendees');
-    validateField('attendees');
-  }
+// 人数步进器逻辑
+const updateAttendees = (delta) => {
+  let newVal = (parseInt(props.modelValue.attendees) || 0) + delta;
+  if (newVal < 1) newVal = 1;
+  props.modelValue.attendees = newVal;
+  // 按钮操作也算作用户交互，需要触发校验
+  handleInput('attendees');
 };
 
-const decrementAttendees = () => {
-  if (formData.value.attendees > 1) {
-    formData.value.attendees--;
-    markFieldTouched('attendees');
-    validateField('attendees');
-  }
+// 切换多媒体投屏
+const toggleProjection = () => {
+  props.modelValue.needProjection = !props.modelValue.needProjection;
 };
 
-// 标记字段为已交互
-const markFieldTouched = (fieldName) => {
-  touched[fieldName] = true;
-};
+// 监听值变化 (用于父组件可能重置表单的情况)
+watch(() => props.modelValue, () => {
+  // 这里不主动触发校验，防止循环或意外红字，完全依赖 handleInput
+}, { deep: true });
 
-// 监听表单字段变化，实时校验
-watch([
-  () => formData.value.activityName,
-  () => formData.value.department,
-  () => formData.value.attendees,
-  () => formData.value.teacherContact
-], async (newValues, oldValues) => {
-  await nextTick();
-
-  Object.keys(validationRules).forEach((field, index) => {
-    // 这里因为watch数组顺序和validationRules key顺序不完全一致，
-    // 简化逻辑：只要有变化就重新校验该字段
-    // 实际项目中可以更精确匹配，或者简单地调用 checkFormValidity(false)
-  });
-
-  // 简单触发一次静默全局校验更新 isValid 状态
-  checkFormValidity(false);
-}, { immediate: false });
 </script>
 
 <style scoped>
 .booking-form {
-  background-color: #ffffff;
+  background: white;
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  padding: 28px 24px;
-  margin-top: 20px;
+  padding: 24px 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
-.form-title {
+.section-title {
   font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 24px;
-  color: #1e293b;
-  position: relative;
-  padding-bottom: 8px;
-}
-
-.form-title::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 32px;
-  height: 2px;
-  background-color: #3b82f6;
-  border-radius: 2px;
-}
-
-.form-group {
-  margin-bottom: 24px;
-  position: relative;
-}
-
-.form-grid .form-group {
-  margin-bottom: 0;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #475569;
-}
-
-.required {
-  color: #ef4444;
-  margin-left: 4px;
-  font-size: 14px;
-}
-
-.input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.form-input {
-  width: 100%;
-  padding: 14px 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 14px;
-  transition: all 0.2s;
-  background-color: #f8fafc;
-  color: #1e293b;
-  height: 48px;
-  box-sizing: border-box;
-}
-
-.form-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  outline: none;
-  background-color: #ffffff;
-}
-
-.form-input::placeholder {
-  color: #94a3b8;
-  font-size: 13px;
-}
-
-.valid-icon, .error-icon {
-  position: absolute;
-  right: 16px;
-  font-size: 16px;
-  pointer-events: none;
-}
-
-.valid-icon {
-  color: #10b981;
-}
-
-.error-icon {
-  color: #ef4444;
-}
-
-.form-textarea {
-  width: 100%;
-  padding: 14px 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 14px;
-  transition: all 0.2s;
-  background-color: #f8fafc;
-  color: #1e293b;
-  resize: vertical;
-  min-height: 100px;
-}
-
-.form-textarea:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  outline: none;
-  background-color: #ffffff;
-}
-
-.textarea-wrapper {
-  position: relative;
-}
-
-.char-counter {
-  position: absolute;
-  right: 16px;
-  bottom: 12px;
-  text-align: right;
-  font-size: 12px;
-  color: #94a3b8;
-  pointer-events: none;
-}
-
-.checkbox-group {
-  display: flex;
-  align-items: center;
-  min-height: 48px;
-  margin-bottom: 24px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-size: 14px;
-  color: #475569;
-}
-
-.custom-checkbox {
-  width: 18px;
-  height: 18px;
-  margin-right: 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  cursor: pointer;
-  appearance: none;
-  position: relative;
-  transition: all 0.2s;
-  background-color: #fff;
-}
-
-.custom-checkbox:checked {
-  background-color: #3b82f6;
-  border-color: #3b82f6;
-}
-
-.custom-checkbox:checked::after {
-  content: '✓';
-  position: absolute;
-  color: white;
-  font-size: 12px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.number-input-group {
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 20px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.number-input {
-  text-align: center;
-  flex: 1;
-  -moz-appearance: textfield;
+.title-icon { font-size: 20px; }
+
+.form-item {
+  margin-bottom: 20px;
 }
 
-.number-input::-webkit-outer-spin-button,
-.number-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+.form-item:last-child {
+  margin-bottom: 0;
 }
 
-.number-btn {
-  width: 42px;
-  height: 48px;
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a5568;
+  margin-bottom: 8px;
+}
+
+.required {
+  color: #e53e3e;
+  margin-left: 4px;
+}
+
+.form-input, .form-textarea {
+  width: 100%;
+  padding: 12px 14px;
   border: 1px solid #e2e8f0;
-  background-color: #f8fafc;
   border-radius: 10px;
-  font-size: 18px;
+  font-size: 15px;
+  color: #2d3748;
+  background: #f8fafc;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-input:focus, .form-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-input::placeholder, .form-textarea::placeholder {
+  color: #a0aec0;
+}
+
+.error-msg {
+  display: block;
+  font-size: 12px;
+  color: #e53e3e;
+  margin-top: 6px;
+}
+
+/* 布局：一行两列 */
+.form-group-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.form-item.half {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+/* 步进器输入框 */
+.stepper-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  overflow: hidden;
+  width: 100%;
+}
+
+.stepper-btn {
+  width: 40px;
+  height: 42px;
+  border: none;
+  background: transparent;
+  color: #667eea;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
-  color: #475569;
+  transition: background 0.2s;
+  flex-shrink: 0; /* 🟢 防止被压缩 */
 }
 
-.number-btn:hover:not(:disabled) {
-  background-color: #e2e8f0;
-  color: #3b82f6;
+.stepper-btn:active {
+  background: #e2e8f0;
 }
 
-.number-btn:disabled {
-  opacity: 0.5;
+.stepper-btn:disabled {
+  color: #cbd5e0;
   cursor: not-allowed;
-  background-color: #f1f5f9;
-  color: #94a3b8;
 }
 
-.error-message {
-  position: absolute;
-  left: 0;
-  bottom: -20px;
-  color: #ef4444;
+.number-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  text-align: center;
+  padding: 0;
+  height: 42px;
+  font-weight: 600;
+  border-radius: 0;
+  box-shadow: none !important;
+}
+
+/* 多媒体投屏卡片开关 */
+.toggle-card {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-card.active {
+  background: #eff6ff; /* 激活时的淡蓝色背景 */
+  border-color: #bfdbfe;
+}
+
+.toggle-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a0aec0;
+  margin-right: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.3s;
+}
+
+.toggle-card.active .toggle-icon {
+  background: #3b82f6;
+  color: white;
+}
+
+.toggle-content {
+  flex: 1;
+}
+
+.toggle-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 2px;
+}
+
+.toggle-desc {
   font-size: 12px;
-  line-height: 1.4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  opacity: 0; /* 默认隐藏 */
-  transition: opacity 0.2s;
+  color: #718096;
 }
 
-/* 只有当输入框有错误且已被触碰时，才显示错误信息 */
-.input-wrapper:has(+ .error-message) + .error-message {
-  opacity: 1;
-}
-/* 注意：上面的 CSS 选择器逻辑可能需要配合 v-if 才能完美生效，
-   但在 Vue 模板中我们是用 v-if="touched && error" 直接控制 DOM 的，
-   所以这里的 opacity 主要是为了过渡动画，或者直接去掉 opacity 控制由 Vue 接管即可。
-   在当前模板逻辑下，v-if 为真时元素才存在，opacity: 1 是默认的（如果没写0）。
-*/
-.error-message {
-  opacity: 1; /* 修正：Vue v-if 控制显隐，CSS 保持可见即可 */
+/* 模拟 iOS 开关 */
+.toggle-switch {
+  width: 44px;
+  height: 24px;
+  background: #cbd5e0;
+  border-radius: 12px;
+  position: relative;
+  transition: background 0.3s;
 }
 
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px 16px;
-  margin-bottom: 24px;
+.toggle-card.active .toggle-switch {
+  background: #3b82f6;
 }
 
-@media (max-width: 768px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
+.switch-handle {
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
+
+.toggle-card.active .switch-handle {
+  transform: translateX(20px);
+}
+
 </style>

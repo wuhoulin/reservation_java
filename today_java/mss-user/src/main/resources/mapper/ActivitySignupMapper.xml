@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.microservice.skeleton.user.mapper.ActivitySignupMapper">
+
+    <select id="selectMySignupPage" resultType="com.microservice.skeleton.user.domain.Response.ActivitySignupResponse">
+        SELECT
+            s.signup_id,
+            s.activity_id,
+            s.user_id,
+            s.signup_time,
+            s.status,
+            a.title AS activityTitle,
+            a.location AS activityLocation,
+            a.start_time AS activityStartTime,
+            a.cover_image AS activityCover,
+            a.status AS activityStatus
+        FROM activity_signup s
+                 LEFT JOIN activity a ON s.activity_id = a.activity_id
+        WHERE s.user_id = #{userId}
+          AND s.status != '2'  ORDER BY s.signup_time DESC
+    </select>
+
+</mapper>

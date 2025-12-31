@@ -93,20 +93,6 @@
             </div>
           </div>
 
-          <div class="form-item">
-            <label class="form-label">邮箱 <span class="required-star">*</span></label>
-            <input
-                v-model="formData.email"
-                type="email"
-                class="form-input"
-                placeholder="请输入邮箱地址"
-                maxlength="50"
-                @input="checkChanges"
-            />
-            <div v-if="showEmailError" class="error-message">
-              请输入正确的邮箱格式
-            </div>
-          </div>
         </div>
       </div>
 
@@ -129,7 +115,7 @@ import 'element-plus/dist/index.css'
 const router = useRouter()
 const route = useRoute()
 
-// 1. 判断是否处于强制模式 (仅用于控制按钮显示逻辑，不再控制拦截)
+// 1. 判断是否处于强制模式
 const isForcedMode = computed(() => route.query.mode === 'force')
 
 // 用户信息
@@ -140,19 +126,19 @@ const formData = reactive({
   studentId: '',
   college: '',
   major: '',
-  phonenumber: '',
-  email: ''
+  phonenumber: ''
+  // 🟢 已移除 email
 })
 
 const saving = ref(false)
 const hasChanges = ref(false)
 const showPhoneError = ref(false)
-const showEmailError = ref(false)
+// 🟢 已移除 showEmailError
 
 // 默认头像
 const defaultAvatar = 'https://thirdwx.qlogo.cn/mmopen/vi_32/POgEwh4mIHO4nibH0KlMECNjjGxQUq24ZEaGT4poC6icRiccVGKSyXwibcPq4BWmiaIGuG1icwxaQX6grC9VemZoJ8rg/132'
 
-// 修改：更新后的学院选项
+// 学院选项
 const collegeOptions = ref([
   { value: '信息工程学院', label: '信息工程学院' },
   { value: '教育学院', label: '教育学院' },
@@ -177,20 +163,13 @@ const isPhoneValid = computed(() => {
   return phoneRegex.test(formData.phonenumber)
 })
 
-const isEmailValid = computed(() => {
-  if (!formData.email) return true
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(formData.email)
-})
+// 🟢 已移除 isEmailValid
 
 // ================== 导航 ==================
 
-// 🟢 修改：无条件允许返回
 const goBack = () => {
   router.back()
 }
-
-// 🟢 移除：onBeforeRouteLeave 路由守卫
 
 // ================== 数据加载与保存 ==================
 
@@ -210,8 +189,8 @@ const loadUserProfile = async () => {
         studentId: response.data.studentId || '',
         college: response.data.college || '',
         major: response.data.major || '',
-        phonenumber: response.data.phonenumber || '',
-        email: response.data.email || ''
+        phonenumber: response.data.phonenumber || ''
+        // 🟢 已移除 email
       })
       Object.assign(originalData, { ...formData })
     }
@@ -223,7 +202,6 @@ const loadUserProfile = async () => {
 
 const checkChanges = () => {
   showPhoneError.value = formData.phonenumber && !isPhoneValid.value
-  showEmailError.value = formData.email && !isEmailValid.value
 
   hasChanges.value = Object.keys(formData).some(key => {
     return formData[key] !== originalData[key]
@@ -236,15 +214,11 @@ const saveProfile = async () => {
     ElMessage.warning('请输入正确的手机号码')
     return
   }
-  if (formData.email && !isEmailValid.value) {
-    ElMessage.warning('请输入正确的邮箱地址')
-    return
-  }
 
-  // 2. 强制模式下的必填校验 (依然保留，确保用户在点击保存时必须填完)
+  // 2. 强制模式下的必填校验
   if (isForcedMode.value) {
-    // 修改：将 'email' 添加到必填字段检查列表
-    const requiredFields = ['userName', 'studentId', 'college', 'major', 'phonenumber', 'email']
+    // 🟢 移除 email
+    const requiredFields = ['userName', 'studentId', 'college', 'major', 'phonenumber']
     const missing = requiredFields.filter(key => !formData[key] || String(formData[key]).trim() === '')
 
     if (missing.length > 0) {
@@ -259,7 +233,6 @@ const saveProfile = async () => {
     // 构建提交数据
     const submitData = {}
     Object.keys(formData).forEach(key => {
-      // 强制模式下提交所有字段，确保完整性
       if (isForcedMode.value || formData[key] !== originalData[key]) {
         submitData[key] = formData[key]
       }
@@ -295,19 +268,19 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 样式保持不变 */
 .user-profile {
   min-height: 100vh;
   background: #f5f5f5;
   padding-bottom: 40px;
 }
 
-/* 头部样式优化：支持 flex 布局平衡 */
 .profile-header {
   background: white;
   padding: 16px;
   display: flex;
   align-items: center;
-  justify-content: space-between; /* 关键：两端对齐 */
+  justify-content: space-between;
   border-bottom: 1px solid #e0e0e0;
   position: sticky;
   top: 0;
@@ -315,7 +288,6 @@ onMounted(() => {
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-/* 返回按钮 */
 .back-btn {
   display: flex;
   align-items: center;
@@ -323,7 +295,7 @@ onMounted(() => {
   font-size: 14px;
   cursor: pointer;
   transition: color 0.3s;
-  width: 60px; /* 固定宽度 */
+  width: 60px;
 }
 
 .back-btn:hover {
@@ -334,7 +306,6 @@ onMounted(() => {
   margin-right: 4px;
 }
 
-/* 右占位符，宽度与返回按钮一致，保证标题居中 */
 .header-right-placeholder {
   width: 60px;
 }
@@ -343,12 +314,11 @@ onMounted(() => {
   margin: 0;
   font-size: 17px;
   color: #333;
-  flex: 1; /* 占据剩余空间 */
+  flex: 1;
   text-align: center;
   font-weight: 600;
 }
 
-/* 内容区域 */
 .profile-content {
   padding: 16px;
   max-width: 600px;
@@ -372,7 +342,6 @@ onMounted(() => {
   border-bottom: 1px solid #f0f0f0;
 }
 
-/* 微信信息 */
 .wechat-info {
   display: flex;
   justify-content: space-between;
@@ -413,7 +382,6 @@ onMounted(() => {
   font-family: monospace;
 }
 
-/* 表单样式 */
 .form-container {
   display: flex;
   flex-direction: column;
@@ -432,7 +400,6 @@ onMounted(() => {
   font-weight: 500;
 }
 
-/* 必填星号 */
 .required-star {
   color: #ff4d4f;
   margin-left: 4px;
@@ -494,7 +461,6 @@ onMounted(() => {
   margin-right: 4px;
 }
 
-/* 操作按钮 */
 .action-buttons {
   margin-top: 32px;
   animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -544,7 +510,6 @@ onMounted(() => {
   }
 }
 
-/* 响应式设计 */
 @media (max-width: 375px) {
   .profile-content {
     padding: 12px;

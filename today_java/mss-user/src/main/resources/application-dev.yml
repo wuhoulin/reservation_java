@@ -1,0 +1,11 @@
+spring:
+  ai:
+    mcp:
+      client:
+        stdio:
+          servers:
+            amap-map-server:
+              command: "npx.cmd"  # ✅ Windows 必须用 .cmd
+              args:
+                - "-y"
+                - "@amap/amap-maps-mcp-server"

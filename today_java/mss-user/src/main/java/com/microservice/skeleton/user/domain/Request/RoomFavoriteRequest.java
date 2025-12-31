@@ -1,15 +1,14 @@
 package com.microservice.skeleton.user.domain.Request;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull; // javax -> jakarta
 
 @Data
-@ApiModel("收藏请求")
+@Schema(description = "收藏请求")
 public class RoomFavoriteRequest {
 
-    @ApiModelProperty(value = "教室ID", required = true)
+    @Schema(description = "教室ID", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "教室ID不能为空")
     private Integer roomId;
 }

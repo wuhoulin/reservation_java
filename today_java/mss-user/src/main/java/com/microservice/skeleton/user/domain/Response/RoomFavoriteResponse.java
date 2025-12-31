@@ -1,38 +1,37 @@
 package com.microservice.skeleton.user.domain.Response;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@ApiModel("收藏响应")
+@Schema(description = "收藏响应")
 public class RoomFavoriteResponse {
 
-    @ApiModelProperty("收藏ID")
+    @Schema(description = "收藏ID")
     private Long id;
 
-    @ApiModelProperty("用户ID")
+    @Schema(description = "用户ID")
     private String userId;
 
-    @ApiModelProperty("教室ID")
+    @Schema(description = "教室ID")
     private Integer roomId;
 
-    @ApiModelProperty("教室名称")
+    @Schema(description = "教室名称")
     private String roomName;
 
-    @ApiModelProperty("容纳人数")
+    @Schema(description = "容纳人数")
     private Integer capacity;
 
-    @ApiModelProperty("教室图片")
+    @Schema(description = "教室图片")
     private String imageUrl;
 
-    @ApiModelProperty("所属社区ID")
+    @Schema(description = "所属社区ID")
     private Integer communityId;
 
-    @ApiModelProperty("收藏时间")
+    @Schema(description = "收藏时间")
     private LocalDateTime createdAt;
 
-    @ApiModelProperty("是否收藏")
+    @Schema(description = "是否收藏")
     private Boolean isFavorited;
 }

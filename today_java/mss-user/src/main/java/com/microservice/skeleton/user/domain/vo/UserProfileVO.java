@@ -1,41 +1,39 @@
-// UserProfileVO.java
 package com.microservice.skeleton.user.domain.vo;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@ApiModel(description = "用户个人信息视图对象")
+@Schema(description = "用户个人信息视图对象")
 public class UserProfileVO {
 
-    @ApiModelProperty("用户ID")
+    @Schema(description = "用户ID")
     private Long userId;
 
-    @ApiModelProperty("微信昵称")
+    @Schema(description = "微信昵称")
     private String nickname;
 
-    @ApiModelProperty("微信头像")
+    @Schema(description = "微信头像")
     private String avatar;
 
-    @ApiModelProperty("微信OpenID")
+    @Schema(description = "微信OpenID")
     private String openid;
 
-    @ApiModelProperty("姓名")
+    @Schema(description = "姓名")
     private String userName;
 
-    @ApiModelProperty("学号")
+    @Schema(description = "学号")
     private String studentId;
 
-    @ApiModelProperty("学院")
+    @Schema(description = "学院")
     private String college;
 
-    @ApiModelProperty("专业")
+    @Schema(description = "专业")
     private String major;
 
-    @ApiModelProperty("联系方式")
+    @Schema(description = "联系方式")
     private String phonenumber;
 
-    @ApiModelProperty("邮箱")
+    @Schema(description = "邮箱")
     private String email;
 }

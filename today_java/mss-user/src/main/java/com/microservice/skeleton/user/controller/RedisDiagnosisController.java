@@ -106,22 +106,7 @@ public class RedisDiagnosisController {
     }
 
 
-    @PostMapping("/delay-queue/trigger")
-    public Map<String, Object> triggerDelayQueueProcess() {
-        Map<String, Object> result = new HashMap<>();
 
-        try {
-            log.info("手动触发延时队列处理");
-            redisDelayQueueService.processDelayQueue();
-            result.put("success", true);
-            result.put("message", "已手动触发延时队列处理");
-        } catch (Exception e) {
-            result.put("success", false);
-            result.put("error", e.getMessage());
-        }
-
-        return result;
-    }
 
     @PostMapping("/reservation/complete/{reservationNo}")
     public Map<String, Object> manualCompleteReservation(@PathVariable String reservationNo) {
@@ -169,7 +154,6 @@ public class RedisDiagnosisController {
             result.put("reservationNo", response.getReservationNo());
             result.put("message", "测试预约创建成功，" + minutes + "分钟后自动完成");
 
-            log.info("✅ 测试预约创建成功: {}", response.getReservationNo());
 
         } catch (Exception e) {
             result.put("success", false);

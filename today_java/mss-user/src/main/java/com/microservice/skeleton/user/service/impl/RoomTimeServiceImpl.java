@@ -4,9 +4,9 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.microservice.skeleton.user.domain.entity.RoomTime;
 import com.microservice.skeleton.user.mapper.RoomTimeMapper;
 import com.microservice.skeleton.user.service.RoomTimeService;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
 import java.util.List;
 
 @Service

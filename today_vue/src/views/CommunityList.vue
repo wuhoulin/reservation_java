@@ -197,6 +197,7 @@ onMounted(() => {
   background-color: #f5f7fa;
   min-height: 100vh;
   position: relative;
+  padding-bottom: 10px;
 }
 
 /* 顶部导航栏 */
@@ -429,6 +430,7 @@ onMounted(() => {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
 
 
 </style>

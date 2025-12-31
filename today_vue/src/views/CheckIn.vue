@@ -114,7 +114,7 @@
         </div>
 
         <h3>当前暂无需要签到的活动</h3>
-        <p class="empty-desc">请在活动开始前 30 分钟内进行签到</p>
+        <p class="empty-desc">请在活动结束前进行签到</p>
         <button class="back-btn" @click="$router.push('/reservations')">查看我的预约</button>
       </div>
     </div>
@@ -175,7 +175,7 @@ const router = useRouter()
 const MAP_KEY = 'f239feb56fe63ea40fc1fa48146420cb'
 const SECURITY_CODE = '8d1a57ba88fb091269930b809bba6c48'
 window._AMapSecurityConfig = { securityJsCode: SECURITY_CODE }
-const ALLOWED_DISTANCE = 200
+const ALLOWED_DISTANCE = 150
 
 // ================= 状态变量 =================
 const pageInitializing = ref(true)
@@ -293,22 +293,16 @@ const loadAMapSDK = async () => {
   return window.AMap
 }
 
-const calculateDistance = (lat1, lng1, lat2, lng2) => {
-  const radLat1 = lat1 * Math.PI / 180.0
-  const radLat2 = lat2 * Math.PI / 180.0
-  const a = radLat1 - radLat2
-  const b = (lng1 * Math.PI / 180.0) - (lng2 * Math.PI / 180.0)
-  const s = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin(a / 2), 2) +
-      Math.cos(radLat1) * Math.cos(radLat2) * Math.pow(Math.sin(b / 2), 2)))
-  return Math.round(s * 6378137)
-}
-
+// 🟢 已优化：使用高德内置 GeometryUtil 计算距离
 const updateDistance = () => {
-  if (userLat.value && userLng.value && taskInfo.value) {
-    distance.value = calculateDistance(
-        userLat.value, userLng.value,
-        taskInfo.value.latitude, taskInfo.value.longitude
-    )
+  if (userLat.value && userLng.value && taskInfo.value && AMap.value) {
+    // 构造两个点的位置对象
+    const p1 = [userLng.value, userLat.value];
+    const p2 = [taskInfo.value.longitude, taskInfo.value.latitude];
+
+    // 使用高德内置工具计算（结果单位为米，且非常精确）
+    const dist = AMap.value.GeometryUtil.distance(p1, p2);
+    distance.value = Math.round(dist);
   }
 }
 

@@ -76,19 +76,24 @@
 
           <div class="time-slots-container">
             <div v-if="timePointsLoading" class="time-loading"><div class="mini-spinner"></div><span>加载时间段...</span></div>
-            <div v-else-if="allTimePoints.length === 0" class="no-time-slots">
+            <div v-else-if="filteredTimePoints.length === 0" class="no-time-slots">
               <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
               <p>该日期暂无可用时间段</p>
             </div>
             <div v-else class="time-slots">
-              <div v-for="timePoint in allTimePoints" :key="timePoint.id" class="time-slot"
-                   :class="{ 'start-point': timePoint.id === selectedStartTimeId, 'end-point': timePoint.id === selectedEndTimeId, 'middle-point': isMiddlePoint(timePoint.id), 'my-pending': timePoint.isMyPending, 'disabled': !timePoint.available || isTimePointDisabled(timePoint) || timePoint.isMyPending }"
+              <div v-for="timePoint in filteredTimePoints" :key="timePoint.id" class="time-slot"
+                   :class="{
+                     'start-point': timePoint.id === selectedStartTimeId,
+                     'end-point': timePoint.id === selectedEndTimeId,
+                     'middle-point': isMiddlePoint(timePoint.id),
+                     'disabled': !timePoint.available
+                   }"
                    @click="handleTimePointClick(timePoint.id)">
-                <div v-if="timePoint.applicantCount > 0" class="applicant-badge">{{ timePoint.applicantCount }}</div>
+
                 <span class="time-text">{{ formatTimePoint(timePoint.point) }}</span>
+
                 <span v-if="!timePoint.available" class="time-badge reserved">已占用</span>
-                <span v-else-if="isTimePointDisabled(timePoint)" class="time-badge reserved">已过期</span>
-                <span v-else-if="timePoint.isMyPending" class="time-badge my-status">已申请</span>
+
                 <span v-else-if="timePoint.id === selectedStartTimeId" class="time-badge start">开始</span>
                 <span v-else-if="timePoint.id === selectedEndTimeId" class="time-badge end">结束</span>
                 <span v-else-if="isMiddlePoint(timePoint.id)" class="time-badge middle">选中</span>
@@ -143,7 +148,7 @@
           <div class="warning-icon">📝</div>
           <p class="confirm-text">完善信息提醒</p>
           <p class="warning-text" style="background: #e6f7ff; border-left-color: #1890ff; color: #0050b3;">
-            为了确保您的预约申请能顺利通过老师的审核，请您先花一分钟完善一下个人身份信息（姓名、学号、手机号）哦~
+            为了确保预约顺利进行，请您先花一分钟完善一下个人身份信息（姓名、学号、手机号）哦~
           </p>
         </div>
         <div class="modal-footer">
@@ -178,14 +183,13 @@
 <script setup>
 import { ref, computed, onMounted, watch, reactive, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { getRoomDetail, getPendingReservationCounts } from "@/api/home.js";
+import { getRoomDetail } from "@/api/home.js";
 import { getAllTimePoints, getAvailableTimePoints } from "@/api/timePoint.js";
 import { getUserProfile } from "@/api/user.js";
-import { getMyReservations } from "@/api/reservations.js";
-import RulesModal from "@/components/RulesModal.vue";
-import BookingForm from "@/components/booking-form.vue";
 import { createReservation, cancelReservation } from '@/api/roomDetail.js';
 import { addFavorite, removeFavorite, checkFavorite } from '@/api/favorite.js';
+import RulesModal from "@/components/RulesModal.vue";
+import BookingForm from "@/components/booking-form.vue";
 import { ElMessage } from 'element-plus';
 
 const currentUser = ref({
@@ -208,9 +212,6 @@ const selectedDateIndex = ref(0);
 const selectedStartTimeId = ref(null);
 const selectedEndTimeId = ref(null);
 const availableTimePointsForRoom = ref([]);
-
-const pendingCountsMap = ref({});
-const myPendingReservations = ref([]);
 
 const isFavorited = ref(false);
 const favoriteLoading = ref(false);
@@ -239,33 +240,43 @@ const bookingForm = reactive({
   attendees: 1
 });
 
-const allTimePoints = computed(() => {
-  return availableTimePointsForRoom.value
-      .map(tp => {
-        const count = pendingCountsMap.value[tp.id] || 0;
-        const isMine = myPendingReservations.value.some(res => {
-          const isSameRoom = String(res.roomId) === String(roomId.value);
-          const resDateStr = String(res.reservationDate || '').substring(0, 10);
-          const isSameDate = resDateStr === selectedFormattedDate.value;
-          const startId = Number(res.startTimeId);
-          const endId = Number(res.endTimeId);
-          const isTimeInRange = tp.id >= startId && tp.id <= endId;
-          return isSameRoom && isSameDate && isTimeInRange;
-        });
+// 计算过滤后的时间段
+const filteredTimePoints = computed(() => {
+  const selectedDateStr = selectedFormattedDate.value;
+  const now = new Date();
 
-        return {
-          ...tp,
-          applicantCount: count,
-          isMyPending: isMine,
-        };
+  const todayY = now.getFullYear();
+  const todayM = String(now.getMonth() + 1).padStart(2, '0');
+  const todayD = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${todayY}-${todayM}-${todayD}`;
+
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
+  return availableTimePointsForRoom.value
+      .filter(tp => {
+        if (selectedDateStr === todayStr) {
+          const [tpHour, tpMinute] = tp.point.split(':').map(Number);
+          if (tpHour < currentHour || (tpHour === currentHour && tpMinute < currentMinute)) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .map(tp => {
+        return { ...tp };
       })
       .sort((a, b) => a.point.localeCompare(b.point));
+});
+
+const allTimePoints = computed(() => {
+  return availableTimePointsForRoom.value.sort((a, b) => a.point.localeCompare(b.point));
 });
 
 const availableDates = computed(() => {
   const dates = [];
   const today = new Date();
-  for (let i = 1; i <= 7; i++) {
+  for (let i = 0; i < 7; i++) {
     const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
     dates.push(date);
   }
@@ -287,68 +298,52 @@ const isReservationOwner = computed(() => {
 });
 
 const canBook = computed(() => {
-  const isLogin = !!currentUser.value.id;
   const isRoomAvailable = room.value.status === true || room.value.status === 1;
   const hasCompleteInterval = !!selectedStartTimeId.value && !!selectedEndTimeId.value;
+  // 这里的 isFormValid 通过 @form-validity-change 实时更新
   const isFormValidated = isFormValid.value;
-  return isLogin && isRoomAvailable && hasCompleteInterval && isFormValidated;
+  return isRoomAvailable && hasCompleteInterval && isFormValidated;
 });
 
+// 并行加载
 onMounted(async () => {
-  await fetchUserProfile();
+  fetchUserProfile().catch(e => {
+    console.warn('加载用户信息受限或未完善', e);
+  });
+
   await loadRoomDetail();
   selectedDateIndex.value = 0;
 
   await Promise.all([
     loadAvailableTimePointsForRoom(),
-    loadPendingCounts(),
-    loadMyPendingReservations(),
     checkFavoriteStatus()
   ]);
 
   if (dateSelector.value) {
-    const selectedElement = dateSelector.value.children[selectedDateIndex.value];
-    if (selectedElement) {
-      dateSelector.value.scrollLeft = selectedElement.offsetLeft - 20;
-    }
+    dateSelector.value.scrollLeft = 0;
   }
 
+  // 🟢 关键修复：页面加载完成后，静默检查表单（传入 false），不要爆红字！
   await nextTick();
-  const isValid = await bookingFormRef.value?.checkFormValidity();
-  isFormValid.value = isValid || false;
+  if (bookingFormRef.value) {
+    // 传入 false，只获取 true/false 状态，不显示错误提示
+    const isValid = bookingFormRef.value.checkFormValidity(false);
+    isFormValid.value = isValid;
+  }
 });
 
 watch(selectedDateIndex, async () => {
   resetTimePointSelection();
-  await Promise.all([loadAvailableTimePointsForRoom(), loadPendingCounts()]);
-  loadMyPendingReservations();
+  await Promise.all([loadAvailableTimePointsForRoom()]);
 });
 
+// 🟢 关键修复：当用户选择时间段时，也只是静默检查，不要突然把表单标红
 watch([selectedStartTimeId, selectedEndTimeId], () => {
-  bookingFormRef.value?.checkFormValidity();
+  if (bookingFormRef.value) {
+    // 传入 false
+    bookingFormRef.value.checkFormValidity(false);
+  }
 });
-
-const loadPendingCounts = async () => {
-  try {
-    const res = await getPendingReservationCounts({
-      roomId: Number(roomId.value),
-      date: selectedFormattedDate.value
-    });
-    if (res.code === 200) pendingCountsMap.value = res.data || {};
-  } catch (e) {
-    console.error('加载申请人数失败:', e);
-  }
-};
-
-const loadMyPendingReservations = async () => {
-  if (!currentUser.value.id) return;
-  try {
-    const res = await getMyReservations(0);
-    if (res.code === 200) myPendingReservations.value = res.data || [];
-  } catch (e) {
-    console.error('加载我的预约失败:', e);
-  }
-};
 
 const checkFavoriteStatus = async () => {
   if (!currentUser.value.id) return;
@@ -397,13 +392,13 @@ const fetchUserProfile = async () => {
       userProfileInfo.contact = userProfile.phonenumber || '';
       userProfileInfo.userId = userProfile.userId || '';
       userProfileInfo.studentId = userProfile.studentId || '';
-      currentUser.value.id = userProfile.openid || '';
-    } else {
-      ElMessage.warning(response.message || '获取用户信息失败');
+
+      if (userProfile.openid) {
+        currentUser.value.id = userProfile.openid;
+      }
     }
   } catch (error) {
-    console.error('获取用户信息失败:', error);
-    ElMessage.warning('获取用户信息失败');
+    console.log('用户信息获取未完成:', error.message);
   } finally {
     loadingProfile.value = false;
   }
@@ -448,7 +443,7 @@ const loadAvailableTimePointsForRoom = async () => {
 const selectDate = (index) => {
   const selectedDate = availableDates.value[index];
   if (isDateDisabled(selectedDate)) {
-    ElMessage.warning('只能预约明天及以后的日期');
+    ElMessage.warning('不可选择该日期');
     return;
   }
   selectedDateIndex.value = index;
@@ -457,31 +452,19 @@ const selectDate = (index) => {
 const isDateDisabled = (date) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  tomorrow.setHours(0,0,0,0);
   const targetDate = new Date(date);
   targetDate.setHours(0, 0, 0, 0);
-  return targetDate < tomorrow;
+  return targetDate < today;
 };
 
 const isTimePointDisabled = (timePoint) => false;
 
 const handleTimePointClick = (timePointId) => {
   const id = Number(timePointId);
-  const timePoint = allTimePoints.value.find(tp => tp.id === id);
+  const timePoint = filteredTimePoints.value.find(tp => tp.id === id);
   const isRoomAvailable = room.value.status === true || room.value.status === 1;
 
   if (!timePoint || !timePoint.available || !isRoomAvailable) return;
-  if (timePoint.isMyPending) {
-    ElMessage.warning('您已申请该时间段，请等待审核');
-    return;
-  }
-
-  // 🟢 核心修改：文案优化，强调唯一性
-  if (timePoint.applicantCount > 0) {
-    ElMessage.info(`温馨提示：该时间段仅能有一位用户预约成功。当前已有 ${timePoint.applicantCount} 位同学申请，我们将按提交顺序依次审核~`);
-  }
 
   if (selectedStartTimeId.value === id && !selectedEndTimeId.value) {
     selectedStartTimeId.value = null;
@@ -497,8 +480,8 @@ const handleTimePointClick = (timePointId) => {
     return;
   }
   if (selectedStartTimeId.value && !selectedEndTimeId.value) {
-    const startIndex = allTimePoints.value.findIndex(tp => tp.id === selectedStartTimeId.value);
-    const currentIndex = allTimePoints.value.findIndex(tp => tp.id === id);
+    const startIndex = filteredTimePoints.value.findIndex(tp => tp.id === selectedStartTimeId.value);
+    const currentIndex = filteredTimePoints.value.findIndex(tp => tp.id === id);
     if (currentIndex > startIndex) {
       selectedEndTimeId.value = id;
     } else {
@@ -516,38 +499,51 @@ const resetTimePointSelection = () => {
 
 const isMiddlePoint = (timePointId) => {
   if (!selectedStartTimeId.value || !selectedEndTimeId.value) return false;
-  const startIndex = allTimePoints.value.findIndex(tp => tp.id === selectedStartTimeId.value);
-  const endIndex = allTimePoints.value.findIndex(tp => tp.id === selectedEndTimeId.value);
-  const currentIndex = allTimePoints.value.findIndex(tp => tp.id === timePointId);
+  const startIndex = filteredTimePoints.value.findIndex(tp => tp.id === selectedStartTimeId.value);
+  const endIndex = filteredTimePoints.value.findIndex(tp => tp.id === selectedEndTimeId.value);
+  const currentIndex = filteredTimePoints.value.findIndex(tp => tp.id === timePointId);
   return currentIndex > startIndex && currentIndex < endIndex;
 };
 
 const getTimePointLabel = (timePointId) => {
-  const timePoint = allTimePoints.value.find(tp => tp.id === timePointId);
+  const timePoint = filteredTimePoints.value.find(tp => tp.id === timePointId);
   return timePoint ? formatTimePoint(timePoint.point) : '';
 };
 
 const getSelectedIntervalCount = () => {
   if (!selectedStartTimeId.value || !selectedEndTimeId.value) return 0;
-  const startIndex = allTimePoints.value.findIndex(tp => tp.id === selectedStartTimeId.value);
-  const endIndex = allTimePoints.value.findIndex(tp => tp.id === selectedEndTimeId.value);
+  const startIndex = filteredTimePoints.value.findIndex(tp => tp.id === selectedStartTimeId.value);
+  const endIndex = filteredTimePoints.value.findIndex(tp => tp.id === selectedEndTimeId.value);
   return endIndex - startIndex + 1;
 };
 
 const formatDay = (date) => date.getDate();
-const formatWeekday = (date) => ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()];
+const formatWeekday = (date) => {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const target = new Date(date);
+  target.setHours(0,0,0,0);
+
+  if (target.getTime() === today.getTime()) return '今天';
+
+  return ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()];
+};
 const formatMonth = (date) => `${date.getMonth() + 1}月`;
 
-// 检查信息完整性
 const isUserProfileComplete = () => {
   return userProfileInfo.userName &&
       userProfileInfo.studentId &&
       userProfileInfo.contact;
 };
 
-// 点击拦截：使用自定义弹窗
 const showTermsModal = () => {
   if (!canBook.value) return;
+
+  if (!currentUser.value.id) {
+    ElMessage.warning('请先登录');
+    router.push('/wechat-auth');
+    return;
+  }
 
   if (!isUserProfileComplete()) {
     profileConfirmModalVisible.value = true;
@@ -557,7 +553,6 @@ const showTermsModal = () => {
   termsModalVisible.value = true;
 };
 
-// 跳转去完善信息
 const goToProfilePage = () => {
   profileConfirmModalVisible.value = false;
   router.push({ path: '/user-profile', query: { mode: 'force' } });
@@ -576,6 +571,8 @@ const proceedWithBooking = async () => {
       return;
     }
 
+    // 🟢 这里的逻辑没问题：提交时，默认传 true (checkFormValidity()不传参就是true)，
+    // 我们需要强制显示错误
     const isFormValid = await bookingFormRef.value?.checkFormValidity();
     if (!isFormValid) {
       ElMessage.error('表单存在未填写或错误项，请检查后重试');
@@ -585,9 +582,9 @@ const proceedWithBooking = async () => {
 
     const getRangeTimePointIds = () => {
       if (!selectedStartTimeId.value || !selectedEndTimeId.value) return [];
-      const startIndex = allTimePoints.value.findIndex(tp => tp.id === selectedStartTimeId.value);
-      const endIndex = allTimePoints.value.findIndex(tp => tp.id === selectedEndTimeId.value);
-      return allTimePoints.value.slice(startIndex, endIndex + 1).map(tp => tp.id);
+      const startIndex = filteredTimePoints.value.findIndex(tp => tp.id === selectedStartTimeId.value);
+      const endIndex = filteredTimePoints.value.findIndex(tp => tp.id === selectedEndTimeId.value);
+      return filteredTimePoints.value.slice(startIndex, endIndex + 1).map(tp => tp.id);
     };
     const timePointIds = getRangeTimePointIds();
 
@@ -615,13 +612,11 @@ const proceedWithBooking = async () => {
 
     const response = await createReservation(reservationData);
     if (response.code === 200) {
-      ElMessage.success('预约已提交，请耐心等待审核');
+      ElMessage.success('预约已提交成功！');
       resetTimePointSelection();
       resetForm();
       await Promise.all([
-        loadAvailableTimePointsForRoom(),
-        loadPendingCounts(),
-        loadMyPendingReservations()
+        loadAvailableTimePointsForRoom()
       ]);
     } else {
       throw new Error(response.message || '预约失败');
@@ -647,6 +642,7 @@ const resetForm = () => {
   });
   isFormValid.value = false;
   if (bookingFormRef.value) {
+    // 这里的重置逻辑是没问题的，手动清理子组件的状态
     Object.keys(bookingFormRef.value.touched).forEach(key => {
       bookingFormRef.value.touched[key] = false;
     });
@@ -687,7 +683,7 @@ const updateFormValidity = (isValid) => {
 </script>
 
 <style scoped>
-/* 样式保持不变 */
+/* 你的样式保持不变 */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 .room-detail-container { min-height: 100vh; background: #f5f7fa; padding-bottom: 24px; }
 .header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); }
@@ -743,7 +739,7 @@ const updateFormValidity = (isValid) => {
 .time-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; }
 .time-slot { position: relative; padding: 16px 12px; text-align: center; background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-weight: 600; color: #2d3748; display: flex; flex-direction: column; align-items: center; gap: 6px; overflow: visible; }
 .time-slot:hover:not(.disabled) { background: #edf2f7; border-color: #cbd5e0; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
-.time-slot.start-point, .time-slot.end-point { background: linear-gradient(135deg, #1677ff 0%, #40a9ff 100%); color: white; border-color: #1677ff; box-shadow: 0 8px 20px rgba(22, 119, 255, 0.4); transform: scale(1.05); }
+.time-slot.start-point, .time-slot.end-point { background: #1677ff; color: white; border-color: #1677ff; box-shadow: 0 4px 12px rgba(22, 119, 255, 0.3); }
 .time-slot.middle-point { background: #e6f7ff; border-color: #91d5ff; color: #1677ff; box-shadow: 0 4px 12px rgba(22, 119, 255, 0.2); }
 .time-slot.my-pending { background: #f1f5f9 !important; border-color: #cbd5e0 !important; color: #718096 !important; cursor: not-allowed; }
 .time-slot.disabled { background: #f1f5f9; color: #cbd5e0; cursor: not-allowed; opacity: 0.6; }

@@ -11,9 +11,10 @@ import Feedback from "@/views/Feedback.vue";
 import Favorites from "@/views/Favorites.vue";
 import Reservations from "@/views/Reservations.vue";
 import ReservationDetail from "@/views/ReservationDetail.vue";
-import FilteredReservations from "@/views/FilteredReservations.vue";
 import Notifications from "@/views/NotificationsPage.vue";
 import CheckIn from "@/views/CheckIn.vue";
+import ActivityList from "@/views/ActivityList.vue";
+import ActivityDetail from "@/views/ActivityDetail.vue";
 const routes = [
     {
         path: "/",
@@ -80,13 +81,6 @@ const routes = [
                 meta: { requiresAuth: true }
             },
             {
-                path: 'reservations/filter/:status',
-                name: 'FilteredReservations',
-                component: FilteredReservations,
-                props: true,
-                meta: { requiresAuth: true }
-            },
-            {
                 path: 'check-in/:reservationId',
                 name: 'CheckIn',
                 component: CheckIn,
@@ -99,7 +93,20 @@ const routes = [
                 component: Notifications,
                 props: true,
                 meta: { requiresAuth: true }
-            }
+            },
+            {
+                path: "activity-list",
+                name: "ActivityList",
+                component: ActivityList,
+                meta: { requiresAuth: true }
+            },
+            {
+                path: "activity/:id",
+                name: "ActivityDetail",
+                component: ActivityDetail,
+                props: true,
+                meta: { requiresAuth: true }
+            },
         ]
     },
     {

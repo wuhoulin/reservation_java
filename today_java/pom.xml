@@ -8,41 +8,43 @@
 	<packaging>pom</packaging>
 
 	<name>Micro-Service-Skeleton</name>
-	<description>Demo project for Spring Boot</description>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-		<java.version>1.8</java.version>
-		<spring-cloud.version>Hoxton.SR8</spring-cloud.version>
-		<spring-cloud-alibaba.version>2.2.1.RELEASE</spring-cloud-alibaba.version>
-		<druid-starter.version>1.1.16</druid-starter.version>
-		<mybatis-plus.version>2.2.0</mybatis-plus.version>
-		<tk.mybatis.starter.version>2.0.4</tk.mybatis.starter.version>
-		<com.spotify-version>0.4.13</com.spotify-version>
+
+		<java.version>17</java.version>
+
+		<spring-cloud.version>2023.0.1</spring-cloud.version>
+		<spring-cloud-alibaba.version>2023.0.1.0</spring-cloud-alibaba.version>
+
+		<druid-starter.version>1.2.23</druid-starter.version>
+		<mybatis-plus.version>3.5.9</mybatis-plus.version>
 	</properties>
+
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.2.10.RELEASE</version>
+		<version>3.2.5</version>
+		<relativePath/>
 	</parent>
+
 	<modules>
 		<module>mss-user</module>
 	</modules>
+
 	<dependencies>
-		<!--Lombok-->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>1.18.30</version>
 		</dependency>
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
+
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
@@ -64,20 +66,27 @@
 				<artifactId>druid-spring-boot-starter</artifactId>
 				<version>${druid-starter.version}</version>
 			</dependency>
-
+			<dependency>
+				<groupId>com.baomidou</groupId>
+				<artifactId>mybatis-plus-boot-starter</artifactId>
+				<version>${mybatis-plus.version}</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
+
 	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
+				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
-					<skip>true</skip>
+					<source>${java.version}</source>
+					<target>${java.version}</target>
 				</configuration>
 			</plugin>
 		</plugins>
 	</build>
+
 	<repositories>
 		<repository>
 			<id>alimaven</id>

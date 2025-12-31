@@ -1,20 +1,18 @@
 package com.microservice.skeleton.user.domain.Request;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull; // javax -> jakarta
 import java.time.LocalTime;
 
 @Data
-@ApiModel(description = "时间点信息请求对象")
+@Schema(description = "时间点信息请求对象")
 public class TimePointRequest {
 
-    @ApiModelProperty(value = "时间点", required = true, example = "08:30:00")
+    @Schema(description = "时间点", requiredMode = Schema.RequiredMode.REQUIRED, example = "08:30:00")
     @NotNull(message = "时间点不能为空")
     private LocalTime point;
 
-    @ApiModelProperty(value = "状态：1-可用，0-不可用", example = "1")
+    @Schema(description = "状态：1-可用，0-不可用", example = "1")
     private Integer status = 1;
 }

@@ -1,24 +1,22 @@
 package com.microservice.skeleton.user.domain.Response;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-
 import java.util.List;
 
 @Data
-@ApiModel(description = "分页结果对象")
+@Schema(description = "分页结果对象")
 public class PageResult<T> {
 
-    @ApiModelProperty("记录列表")
+    @Schema(description = "记录列表")
     private List<T> records;
 
-    @ApiModelProperty("总记录数")
+    @Schema(description = "总记录数")
     private Long total;
 
-    @ApiModelProperty("当前页码")
+    @Schema(description = "当前页码")
     private Long current;
 
-    @ApiModelProperty("每页数量")
+    @Schema(description = "每页数量")
     private Long size;
 }
