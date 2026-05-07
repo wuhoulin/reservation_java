@@ -2,19 +2,17 @@ spring:
   ai:
     mcp:
       client:
+        enabled: true
+        type: sync
+        # 增加初始化超时时间（生产环境网络可能不稳定，设为 60 秒）
+        # 注意：某些 M6 版本可能不支持在 yml 直接配 timeout，如果报错请删除下一行
+        # initialization-timeout: 60s
         stdio:
-          servers:
+          connections:
             amap-map-server:
-              command: "npx"      # ✅ Linux 只能用 npx
+              command: "npx"
               args:
                 - "-y"
                 - "@amap/amap-maps-mcp-server"
-
-# 生产环境通常建议关闭 Swagger 以提高安全性（可选）
-swagger:
-  enable: false
-
-# 生产环境日志级别可以调高（可选）
-logging:
-  level:
-    com.microservice.skeleton.user.mapper: INFO
+              env:
+                AMAP_MAPS_API_KEY: "2e71becaab7d6d895539951a2a7a07e0"

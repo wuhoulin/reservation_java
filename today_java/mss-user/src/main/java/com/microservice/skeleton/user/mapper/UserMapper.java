@@ -13,13 +13,6 @@ import org.apache.ibatis.annotations.Param;
 public interface UserMapper  extends BaseMapper<User> {
 
 
-    /**
-     * 根据 Example 构造查询条件查找单个 User
-     * @param userExample 查询条件
-     * @return 返回符合条件的 User 对象
-     */
-    User selectOneByExample(@Param("userExample") Example userExample);
-
 
 
 }

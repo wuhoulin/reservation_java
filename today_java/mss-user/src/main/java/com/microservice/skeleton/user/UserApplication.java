@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.microservice.skeleton")
 @Slf4j
 @EnableScheduling
 @MapperScan("com.microservice.skeleton.user.mapper")

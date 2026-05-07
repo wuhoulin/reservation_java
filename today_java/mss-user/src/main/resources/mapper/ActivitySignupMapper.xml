@@ -14,12 +14,18 @@
             a.title AS activityTitle,
             a.location AS activityLocation,
             a.start_time AS activityStartTime,
+
+            -- 🔥 核心修改：查出结束时间并对应 Java 属性名
+            a.end_time AS activityEndTime,
+
             a.cover_image AS activityCover,
-            a.status AS activityStatus
+            a.status AS activityStatus,
+            a.max_people AS maxPeople,
+            a.current_people AS currentPeople
         FROM activity_signup s
                  LEFT JOIN activity a ON s.activity_id = a.activity_id
         WHERE s.user_id = #{userId}
-          AND s.status != '2'  ORDER BY s.signup_time DESC
-    </select>
 
+        ORDER BY s.signup_time DESC
+    </select>
 </mapper>

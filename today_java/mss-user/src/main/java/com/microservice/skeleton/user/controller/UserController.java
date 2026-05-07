@@ -15,12 +15,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpServletRequest; // 修改: javax -> jakarta
-import jakarta.validation.Valid; // 修改: javax -> jakarta
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.util.List;
 
+@Tag(name = "用户管理接口", description = "提供用户基础信息查询、个人资料更新等功能")
 @RestController
-@Tag(name = "用户接口")
 @RequestMapping("/api/user")
 @CrossOrigin
 @Slf4j
@@ -30,7 +30,7 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    @Operation(summary = "获取当前用户信息")
+    @Operation(summary = "获取当前登录用户信息", description = "根据上下文中的 OpenID 获取详细信息")
     @GetMapping("/info")
     public ApiResponse<User> getCurrentUserInfo() {
         String openid = UserContext.getCurrentOpenid();
@@ -46,7 +46,7 @@ public class UserController {
         return ApiResponse.success(user);
     }
 
-    @Operation(summary = "获取用户个人信息")
+    @Operation(summary = "获取用户个人资料", description = "获取包含扩展属性的用户个人资料视图")
     @GetMapping("/profile")
     public ApiResponse<UserProfileVO> getUserProfile() {
         String openid = UserContext.getCurrentOpenid();
@@ -62,7 +62,7 @@ public class UserController {
         return ApiResponse.success(userProfile);
     }
 
-    @Operation(summary = "更新个人资料")
+    @Operation(summary = "更新用户个人资料")
     @PutMapping("/profile")
     public ApiResponse<Void> updateUserProfile(@Valid @RequestBody UserProfileDTO userProfileDTO) {
         String openid = UserContext.getCurrentOpenid();
@@ -88,7 +88,7 @@ public class UserController {
         return ApiResponse.success(users);
     }
 
-    @Operation(summary = "根据ID获取用户")
+    @Operation(summary = "根据ID获取用户信息")
     @GetMapping("/{userId}")
     public ApiResponse<User> getUserById(@PathVariable Long userId) {
         User user = userService.getById(userId);
@@ -98,7 +98,7 @@ public class UserController {
         return ApiResponse.success(user);
     }
 
-    @Operation(summary = "更新用户信息")
+    @Operation(summary = "直接更新用户实体信息")
     @PutMapping("/update")
     public ApiResponse<User> updateUser(@RequestBody User user) {
         boolean success = userService.updateById(user);
@@ -120,8 +120,8 @@ public class UserController {
         }
     }
 
-    @IgnoreSecurityCheck
     @Operation(summary = "检查用户名是否存在")
+    @IgnoreSecurityCheck
     @GetMapping("/check-username")
     public ApiResponse<Boolean> checkUsernameExists(@RequestParam String username) {
         User user = userService.findByUsername(username);

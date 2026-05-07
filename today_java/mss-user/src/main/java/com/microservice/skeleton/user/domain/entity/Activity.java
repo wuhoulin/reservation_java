@@ -63,4 +63,6 @@ public class Activity {
     private Date updateTime;
 
     private String remark;
+    @TableLogic(value = "0", delval = "2")
+    private String delFlag;
 }

@@ -119,6 +119,7 @@
       <BookingForm
           ref="bookingFormRef"
           v-model="bookingForm"
+          :user-info="userProfileInfo"
           @form-validity-change="updateFormValidity"
       />
 
@@ -241,10 +242,12 @@ const bookingForm = reactive({
 });
 
 // 计算过滤后的时间段
+// 修改后的 filteredTimePoints 计算属性
 const filteredTimePoints = computed(() => {
   const selectedDateStr = selectedFormattedDate.value;
   const now = new Date();
 
+  // 获取今天的日期字符串
   const todayY = now.getFullYear();
   const todayM = String(now.getMonth() + 1).padStart(2, '0');
   const todayD = String(now.getDate()).padStart(2, '0');
@@ -255,6 +258,14 @@ const filteredTimePoints = computed(() => {
 
   return availableTimePointsForRoom.value
       .filter(tp => {
+        // --- 新增逻辑：强制过滤掉 08:30 之前的所有时间点 ---
+        const [hour, minute] = tp.point.split(':').map(Number);
+        if (hour < 8 || (hour === 8 && minute < 30)) {
+          return false;
+        }
+        // ----------------------------------------------
+
+        // 原有逻辑：如果是今天，过滤掉已经过去的时间
         if (selectedDateStr === todayStr) {
           const [tpHour, tpMinute] = tp.point.split(':').map(Number);
           if (tpHour < currentHour || (tpHour === currentHour && tpMinute < currentMinute)) {
@@ -323,10 +334,9 @@ onMounted(async () => {
     dateSelector.value.scrollLeft = 0;
   }
 
-  // 🟢 关键修复：页面加载完成后，静默检查表单（传入 false），不要爆红字！
+  // 页面加载完成后，静默检查表单（传入 false），不要爆红字
   await nextTick();
   if (bookingFormRef.value) {
-    // 传入 false，只获取 true/false 状态，不显示错误提示
     const isValid = bookingFormRef.value.checkFormValidity(false);
     isFormValid.value = isValid;
   }
@@ -337,10 +347,9 @@ watch(selectedDateIndex, async () => {
   await Promise.all([loadAvailableTimePointsForRoom()]);
 });
 
-// 🟢 关键修复：当用户选择时间段时，也只是静默检查，不要突然把表单标红
+// 当用户选择时间段时，也只是静默检查，不要突然把表单标红
 watch([selectedStartTimeId, selectedEndTimeId], () => {
   if (bookingFormRef.value) {
-    // 传入 false
     bookingFormRef.value.checkFormValidity(false);
   }
 });
@@ -571,8 +580,6 @@ const proceedWithBooking = async () => {
       return;
     }
 
-    // 🟢 这里的逻辑没问题：提交时，默认传 true (checkFormValidity()不传参就是true)，
-    // 我们需要强制显示错误
     const isFormValid = await bookingFormRef.value?.checkFormValidity();
     if (!isFormValid) {
       ElMessage.error('表单存在未填写或错误项，请检查后重试');
@@ -584,7 +591,11 @@ const proceedWithBooking = async () => {
       if (!selectedStartTimeId.value || !selectedEndTimeId.value) return [];
       const startIndex = filteredTimePoints.value.findIndex(tp => tp.id === selectedStartTimeId.value);
       const endIndex = filteredTimePoints.value.findIndex(tp => tp.id === selectedEndTimeId.value);
-      return filteredTimePoints.value.slice(startIndex, endIndex + 1).map(tp => tp.id);
+
+      // 🟢 关键修改：左闭右开逻辑 [Start, End)
+      // 使用 slice(startIndex, endIndex) 不包含结束索引
+      // 这样提交给后端时，不会包含结束那个点的时间片
+      return filteredTimePoints.value.slice(startIndex, endIndex).map(tp => tp.id);
     };
     const timePointIds = getRangeTimePointIds();
 
@@ -642,7 +653,6 @@ const resetForm = () => {
   });
   isFormValid.value = false;
   if (bookingFormRef.value) {
-    // 这里的重置逻辑是没问题的，手动清理子组件的状态
     Object.keys(bookingFormRef.value.touched).forEach(key => {
       bookingFormRef.value.touched[key] = false;
     });

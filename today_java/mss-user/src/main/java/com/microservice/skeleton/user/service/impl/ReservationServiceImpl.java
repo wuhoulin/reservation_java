@@ -75,8 +75,8 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
 
         // 校验时间参数
         List<Integer> timePointIds = request.getTimePointIds();
-        if (timePointIds == null || timePointIds.size() < 2) {
-            throw new BusinessException("至少选择2个时间点");
+        if (timePointIds == null || timePointIds.size() < 1) {
+            throw new BusinessException("至少选择1个时间段");
         }
 
         // 获取并排序时间点
@@ -89,41 +89,30 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
         TimePoint startPoint = timePoints.get(0);
         TimePoint endPoint = timePoints.get(timePoints.size() - 1);
 
-        if (startPoint.getPoint().equals(endPoint.getPoint())) {
-            throw new BusinessException("起止时间不能相同");
-        }
-
         LocalDate reservationDate = request.getReservationDate();
         Long roomId = request.getRoomId();
         Integer startTimeId = startPoint.getId();
         Integer endTimeId = endPoint.getId();
 
-        // 解决并发问题：使用 synchronized 锁住 "房间+日期"
-        // 注意：单体应用有效，若是微服务集群建议使用 Redis 分布式锁
+        // 解决并发问题
         String lockKey = ("room-" + roomId + "-" + reservationDate).intern();
 
         Reservation reservation = new Reservation();
 
         synchronized (lockKey) {
-            // 初始化库存记录
             initRoomReserveDate(roomId.intValue(), reservationDate);
 
-            // 二次检查冲突
             int unavailableCount = roomReserveDateMapper.countUnavailableTimePoints(
                     roomId.intValue(), reservationDate, startTimeId, endTimeId);
             if (unavailableCount > 0) {
                 throw new BusinessException("手慢了，该时间段刚被抢占");
             }
 
-            // 组装预约对象
             BeanUtils.copyProperties(request, reservation);
             reservation.setStartTimeId(startTimeId);
             reservation.setEndTimeId(endTimeId);
-
-            // 核心修改：状态直接设为 1 (已通过)
             reservation.setStatus(1);
 
-            // 补充详情
             reservation.setActivityName(request.getActivityName());
             reservation.setDepartment(request.getDepartment());
             reservation.setUserName(request.getUserName());
@@ -137,30 +126,24 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
             reservation.setAttendees(request.getAttendees());
             reservation.setUserId(openid);
 
-            // 设置时间
             reservation.setCreatedAt(LocalDateTime.now());
             reservation.setUpdatedAt(LocalDateTime.now());
-            reservation.setAuditTime(LocalDateTime.now()); // 自动审核时间
+            reservation.setAuditTime(LocalDateTime.now());
             reservation.setRoomId(request.getRoomId());
             reservation.setRemark("系统自动通过");
 
-            // 生成单号
             String timeStr = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
             int randomNum = new Random().nextInt(900) + 100;
             reservation.setReservationNo("R" + timeStr + randomNum);
 
-            // 保存预约
             save(reservation);
 
-            // 立即锁定库存 (将 room_reserve_date 对应时段置为不可用)
-            // 1. 计算涉及的所有时间点ID
             List<TimePoint> allPoints = timePointService.list();
             List<Integer> rangeIds = allPoints.stream()
                     .filter(tp -> tp.getId() >= startTimeId && tp.getId() <= endTimeId)
                     .map(TimePoint::getId)
                     .collect(Collectors.toList());
 
-            // 2. 执行锁定 (status=0 代表占用)
             if (!rangeIds.isEmpty()) {
                 roomReserveDateMapper.batchUpdateTimePointStatus(
                         roomId.intValue(),
@@ -173,10 +156,8 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
             }
         }
 
-        // 添加延时任务
         addReservationCompleteDelayTask(reservation);
 
-        // 返回结果
         ReservationResponse response = new ReservationResponse();
         BeanUtils.copyProperties(reservation, response);
         return response;
@@ -215,7 +196,10 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
             TimePoint endTimePoint = timePointService.getById(reservation.getEndTimeId());
             if (endTimePoint == null) return;
 
-            LocalDateTime endDateTime = reservation.getReservationDate().atTime(endTimePoint.getPoint());
+            // ⚠️ 注意：延时任务的执行时间也需要顺延到活动真正结束（原结束点 + 30分钟）
+            // 这样活动结束时，系统才会自动标记为"已完成"
+            LocalDateTime endDateTime = reservation.getReservationDate().atTime(endTimePoint.getPoint().plusMinutes(30));
+
             DelayQueueMessage message = new DelayQueueMessage();
             message.setReservationNo(reservation.getReservationNo());
             message.setReservationId(reservation.getId());
@@ -241,14 +225,12 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
 
             Integer currentStatus = reservation.getStatus();
 
-            // 待审核 -> 已过期
             if (currentStatus == 0) {
                 reservation.setStatus(5);
                 reservation.setUpdatedAt(LocalDateTime.now());
                 updateById(reservation);
                 log.info("预约超时未审核，自动过期: {}", reservationNo);
             }
-            // 已通过 -> 已完成
             else if (currentStatus == 1) {
                 reservation.setStatus(4);
                 reservation.setUpdatedAt(LocalDateTime.now());
@@ -301,7 +283,8 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
 
             TimeRangeDto dto = new TimeRangeDto();
             dto.setStart(startPoint.getPoint().toString());
-            dto.setEnd(endPoint.getPoint().toString());
+            // 🟢 修改处：结束时间 + 30分钟
+            dto.setEnd(endPoint.getPoint().plusMinutes(30).toString());
             dto.setReservationNo(reservationNo);
             dto.setUserId(reservation != null ? reservation.getUserId() : "");
             reservedRanges.add(dto);
@@ -325,8 +308,6 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
     public ReservationVO getReservationDetail(Integer id) {
         Reservation reservation = reservationMapper.selectById(id);
         if (reservation == null) return null;
-
-        // 使用 convertToVO 统一转换逻辑，确保包含教室名称和时间字符串
         return convertToVO(reservation);
     }
 
@@ -340,21 +321,16 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
             throw new BusinessException("当前状态不可取消");
         }
 
-        // 修改点：如果是已通过(status=1)的预约，检查取消截止时间
         if (reservation.getStatus() == 1) {
             LocalDateTime now = LocalDateTime.now();
-
-            // 🔥🔥🔥 核心修改：minusHours(1) -> minusHours(3) 🔥🔥🔥
-            // 截止时间 = 预约开始时间 - 3小时
             LocalDateTime cancelDeadline = reservation.getReservationDate().atTime(
                     getTimeById(reservation.getStartTimeId()).minusHours(3));
 
             if (now.isAfter(cancelDeadline)) {
-                throw new BusinessException("已通过的预约需在开始前3小时取消"); // 提示文案也同步修改
+                throw new BusinessException("已通过的预约需在开始前3小时取消");
             }
         }
 
-        // ... (后续释放库存、更新状态、惩罚逻辑保持不变) ...
         List<TimePoint> allPoints = timePointService.list();
         allPoints.sort(Comparator.comparing(TimePoint::getPoint));
         List<Integer> rangeIds = allPoints.stream()
@@ -367,10 +343,9 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
                 rangeIds, 1, null, null
         );
 
-        reservation.setStatus(3); // 已取消
+        reservation.setStatus(3);
         reservationMapper.updateById(reservation);
 
-        // 统计取消次数进行惩罚
         LocalDateTime oneMonthAgo = LocalDateTime.now().minusMonths(1);
         int cnt = reservationMapper.countByUserIdAndStatusAndCancelTimeAfter(userId, 3, oneMonthAgo);
         if (cnt >= 2) {
@@ -416,31 +391,26 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void performCheckIn(String userId, CheckInRequest request) {
-        // 1. 基础校验
         Reservation reservation = reservationMapper.selectById(request.getReservationId());
         if (reservation == null) throw new RuntimeException("预约不存在");
         if (reservation.getCheckInStatus() == 1) throw new RuntimeException("已签到");
         if (reservation.getStatus() != 1) throw new RuntimeException("当前状态不可签到");
 
-        // 2. 获取当前时间、开始时间、结束时间
         LocalDateTime now = LocalDateTime.now();
+        // ⚠️ 这里获取 endTime 时，如果需要判断是否活动已结束，建议也加上 30 分钟
+        // 这里暂时保持原逻辑 getRealTime(..., endTimeId) 是获取该ID对应的时间（如08:00）。
+        // 如果想表达活动彻底结束（08:30），需要 plusMinutes(30)
         LocalDateTime startTime = getRealTime(reservation.getReservationDate(), reservation.getStartTimeId());
-        LocalDateTime endTime = getRealTime(reservation.getReservationDate(), reservation.getEndTimeId());
+        LocalDateTime endTime = getRealTime(reservation.getReservationDate(), reservation.getEndTimeId()).plusMinutes(30);
 
-        // 3. 修改时间判断逻辑
-        // 逻辑：必须在 [开始前15分钟] 之后，且在 [结束时间] 之前
-
-        // A. 检查是否太早 (早于开始前15分钟)
         if (now.isBefore(startTime.minusMinutes(15))) {
             throw new RuntimeException("活动未开始，请在开始前15分钟内签到");
         }
 
-        // B. 检查是否太晚 (晚于结束时间) - 原代码是 diff > 30，这里改成了晚于 endTime
         if (now.isAfter(endTime)) {
             throw new RuntimeException("活动已结束，签到通道已关闭");
         }
 
-        // 4. 距离校验 (保持不变)
         Room room = roomMapper.selectById(reservation.getRoomId());
         double dist = DistanceUtil.getDistance(
                 request.getLatitude().doubleValue(), request.getLongitude().doubleValue(),
@@ -448,7 +418,6 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
 
         if (dist > ALLOWED_DISTANCE) throw new RuntimeException("距离过远，请到现场签到");
 
-        // 5. 更新状态
         reservation.setCheckInStatus(1);
         reservation.setCheckInTime(LocalDateTime.now());
         reservationMapper.updateById(reservation);
@@ -523,7 +492,6 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
         }
 
         result.setState(state);
-        // 这里 convertToVO 修复了，会正确填充地点和时间
         result.setTaskInfo(convertToVO(target));
 
         if (state == 1) {
@@ -538,17 +506,11 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
         return result;
     }
 
-    /**
-     * VO转换核心方法
-     * 修复：从rooms表获取地点，从time_points表获取具体时间字符串
-     * 修改：审核意见直接从 reservations 表的 remark 字段获取
-     */
     private ReservationVO convertToVO(Reservation reservation) {
         if (reservation == null) return null;
         ReservationVO vo = new ReservationVO();
         BeanUtils.copyProperties(reservation, vo);
 
-        // 1. 填充地点信息 (来自 rooms 表)
         Room room = roomMapper.selectById(reservation.getRoomId());
         if (room != null) {
             vo.setRoomName(room.getName());
@@ -557,23 +519,20 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
             vo.setCommunityName(room.getName());
         }
 
-        // 2. 填充开始时间字符串 (来自 time_points 表)
         TimePoint startTp = timePointMapper.selectById(reservation.getStartTimeId());
         if (startTp != null) {
-            vo.setStartTime(startTp.getPoint().toString()); // 例如 "08:30"
+            vo.setStartTime(startTp.getPoint().toString());
         }
 
-        // 3. 填充结束时间字符串
         TimePoint endTp = timePointMapper.selectById(reservation.getEndTimeId());
         if (endTp != null) {
-            vo.setEndTime(endTp.getPoint().toString());
+            // 🟢 核心修改：数据库存的是"最后占用的时间点"，显示的结束时间应该是该点 + 30分钟
+            vo.setEndTime(endTp.getPoint().plusMinutes(30).toString());
         }
 
-        // 4. 填充审核信息
         if (reservation.getStatus() != null) {
             String statusDesc = getStatusDescription(reservation.getStatus());
             vo.setStatusDesc(statusDesc);
-            // 关键修改：直接用 reservations 表的 remark
             vo.setAuditReason(reservation.getRemark());
             vo.setAuditTime(reservation.getAuditTime());
         }
@@ -581,7 +540,6 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
         return vo;
     }
 
-    // 简单的状态描述映射 (替代 ReservationApprovalService)
     private String getStatusDescription(Integer status) {
         switch (status) {
             case 0: return "待审核";

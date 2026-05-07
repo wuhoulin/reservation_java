@@ -15,6 +15,7 @@ import Notifications from "@/views/NotificationsPage.vue";
 import CheckIn from "@/views/CheckIn.vue";
 import ActivityList from "@/views/ActivityList.vue";
 import ActivityDetail from "@/views/ActivityDetail.vue";
+
 const routes = [
     {
         path: "/",
@@ -120,54 +121,39 @@ const routes = [
         component: AuthCallback
     },
 ];
+
 const router = createRouter({
     history: createWebHistory(),
     routes
 });
 
 router.beforeEach((to, from, next) => {
-    console.log('🚀 路由守卫: ', {
-        from: from.path,
-        to: to.path,
-        requiresAuth: to.matched.some(record => record.meta.requiresAuth)
-    });
-
-    // 检查目标路由是否需要登录
+    // 1. 检查目标路由是否需要登录
     if (to.matched.some(record => record.meta.requiresAuth)) {
         const openid = localStorage.getItem('wechat_openid');
         const token = localStorage.getItem('jwt_token');
+        // 🔥 核弹级校验：不仅要有Token，还必须是当前活跃会话(Session)
+        // 如果用户关了浏览器再开，Session会丢失，这里就会强制踢回授权页
+        const isSessionActive = sessionStorage.getItem('session_active');
 
-        console.log('🔐 登录状态检查:', {
-            openid: openid ? '有' : '无',
-            token: token ? '有' : '无'
-        });
-
-        if (!openid || !token) {
-            console.log('❌ 未登录，跳转到授权页面');
+        if (!openid || !token || !isSessionActive) {
+            console.log('❌ 安全拦截：会话失效或未登录，强制重新授权');
+            // 无论你之前在哪个页面，只要会话断了，全部去 /wechat-auth 清洗数据
             next({
                 path: '/wechat-auth',
-                // 携带当前需要访问的路径，授权后跳回
                 query: { redirect: to.fullPath }
             });
         } else {
-            console.log('✅ 已登录，允许访问');
+            console.log('✅ 会话有效，允许访问');
             next();
         }
     } else {
-        // 非受保护路由（如 /wechat-auth、/auth-callback）
-        const openid = localStorage.getItem('wechat_openid');
-        const token = localStorage.getItem('jwt_token');
-
-        // 关键修改2：如果已登录，且当前要去授权页，自动跳转到默认页（/community-list）
-        if (openid && token && to.path === '/wechat-auth') {
-            console.log('✅ 已登录，跳过授权页，跳转到社区列表');
-            // 优先跳回之前携带的 redirect 路径，没有则跳默认页
-            const redirectPath = to.query.redirect || '/community-list';
-            next(redirectPath);
-        } else {
-            console.log('🌐 公开路由，允许访问');
-            next();
-        }
+        // 2. 对于公开路由（/wechat-auth, /auth-callback）
+        // 🔥 移除所有“智能跳过”逻辑！
+        // 哪怕用户已经登录了，如果他手动访问 /wechat-auth，我们也让他进去
+        // 这样可以确保 WeChatAuth.vue 里的 clearAllCache() 100% 被执行
+        console.log('🛡️ 进入公开页面，不拦截');
+        next();
     }
 });
 

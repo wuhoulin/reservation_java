@@ -28,7 +28,7 @@ public class CommunityController {
     private CommunityService communityService;
 
     @PostMapping
-    @Operation(summary = "创建社区") // 替换了 @ApiOperation
+    @Operation(summary = "创建社区")
     public ApiResponse<CommunityResponse> createCommunity(@Valid @RequestBody CommunityRequest request) {
         CommunityResponse response = communityService.createCommunity(request);
         return ApiResponse.success(response);
@@ -36,7 +36,7 @@ public class CommunityController {
 
     @PutMapping("/{id}")
     @Operation(summary = "更新社区")
-    @Parameter(name = "id", description = "社区ID", required = true) // 替换了 @ApiImplicitParam
+    @Parameter(name = "id", description = "社区ID", required = true)
     public ApiResponse<CommunityResponse> updateCommunity(@PathVariable Integer id, @Valid @RequestBody CommunityRequest request) {
         CommunityResponse response = communityService.updateCommunity(id, request);
         return ApiResponse.success(response);

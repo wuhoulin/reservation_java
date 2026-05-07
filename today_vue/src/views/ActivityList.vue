@@ -13,18 +13,6 @@
         </div>
       </div>
 
-      <div class="tabs-scroll-area">
-        <div class="status-tabs">
-          <div
-              v-for="tab in tabs" :key="tab.value"
-              class="tab-item"
-              :class="{ active: currentTab === tab.value }"
-              @click="currentTab = tab.value"
-          >
-            {{ tab.label }}
-          </div>
-        </div>
-      </div>
     </div>
 
     <div class="activity-list" v-loading="loading">
@@ -45,10 +33,6 @@
             <span class="dot"></span>
             {{ getStatusText(item.status) }}
           </div>
-
-          <div v-if="item.isJoined" class="joined-badge">
-            ✅ 已报名
-          </div>
         </div>
 
         <div class="card-content">
@@ -58,10 +42,11 @@
             <div class="meta-info">
               <div class="meta-item">
                 <span class="icon">📅</span>
-                <span>{{ formatTime(item.startTime) }}</span>
+                <span>{{ formatTime(item.startTime) }} ~ {{ formatTime(item.endTime) }}</span>
               </div>
+
               <div class="meta-item">
-                <span class="icon">📍</span>
+                <span class="icon">🗺️</span>
                 <span class="loc-text">{{ item.location }}</span>
               </div>
             </div>
@@ -70,7 +55,7 @@
           <div class="card-footer">
             <div class="progress-box">
               <div class="progress-text">
-                <span class="label">已报 {{ item.currentPeople || 0 }}/{{ item.maxPeople }}</span>
+                <span class="label">已报 {{ item.currentPeople || 0 }}/{{ item.maxPeople || 0 }}</span>
                 <span class="percent">{{ calculatePercent(item) }}%</span>
               </div>
               <div class="progress-track">
@@ -107,8 +92,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
-// 确保你的 api/activity.js 路径正确
-import { getActivityPage } from '@/api/activity';
+import { getActivityPage, getMyActivityPage } from '@/api/activity';
 
 const router = useRouter();
 const loading = ref(false);
@@ -116,44 +100,55 @@ const activityList = ref([]);
 const defaultImg = 'https://via.placeholder.com/200x200?text=Activity';
 
 const searchKeyword = ref('');
-const currentTab = ref('all');
+const currentTab = ref('all'); // 默认查全部
 
-// 状态 Tabs
-const tabs = [
-  { label: '全部', value: 'all' },
-  { label: '🔥 报名中', value: '0' },
-  { label: '✅ 已报名', value: 'joined' },
-  { label: '🏁 已结束', value: '2' }
-];
-
-// 获取数据逻辑
 const fetchList = async () => {
   loading.value = true;
   try {
     const params = {
-      current: 1,  // 暂时只拉取第一页
+      current: 1,
       size: 50,
       keyword: searchKeyword.value
     };
 
-    // 只有当 Tab 不为 'all' 时才传 status 参数
-    if (currentTab.value !== 'all') {
-      params.status = currentTab.value;
-    }
+    let response;
+    let listData = [];
 
-    // --- 调用真实后端接口 ---
-    const response = await getActivityPage(params);
+    // 区分“我的报名”和“公共列表”
+    if (currentTab.value === 'joined') {
+      response = await getMyActivityPage(params);
+      const rawRecords = response.data?.records || response.rows || [];
 
-    if (response.data && response.data.records) {
-      activityList.value = response.data.records;
-    } else if (response.records) {
-      activityList.value = response.records;
-    } else if (response.rows) {
-      // 兼容 RuoYi pageHelper
-      activityList.value = response.rows;
+      listData = rawRecords.map(item => ({
+        activityId: item.activityId || item.activity_id,
+        title: item.activityTitle || item.title || '未知活动',
+        coverImage: item.activityCover || item.coverImage,
+        startTime: item.activityStartTime || item.startTime,
+        // 如果后端SQL没查endTime，这里可能会空，建议后端selectSignupsByActivityIds加上endTime
+        endTime: item.activityEndTime || item.endTime,
+        location: item.activityLocation || item.location,
+        status: item.activityStatus !== undefined ? item.activityStatus : item.status,
+        maxPeople: item.maxPeople || item.max_people || 0,
+        currentPeople: item.currentPeople || item.current_people || 0,
+        isJoined: true
+      }));
+
     } else {
-      activityList.value = [];
+      if (currentTab.value !== 'all') {
+        params.status = currentTab.value;
+      }
+      response = await getActivityPage(params);
+
+      if (response.data && response.data.records) {
+        listData = response.data.records;
+      } else if (response.records) {
+        listData = response.records;
+      } else if (response.rows) {
+        listData = response.rows;
+      }
     }
+
+    activityList.value = listData;
 
   } catch (error) {
     console.error("获取活动列表失败:", error);
@@ -165,13 +160,10 @@ const fetchList = async () => {
 
 const handleSearch = () => fetchList();
 
-// 监听 Tab 切换
 watch(currentTab, () => fetchList());
 
-// 挂载时加载
 onMounted(() => fetchList());
 
-// --- 辅助方法 ---
 const goToDetail = (id) => router.push({ name: 'ActivityDetail', params: { id } });
 
 const getStatusText = (status) => {
@@ -184,10 +176,12 @@ const getStatusClass = (status) => {
   return map[String(status)] || 'status-gray';
 };
 
+// 🔥🔥🔥 修改点 2：修复时间格式化逻辑 🔥🔥🔥
 const formatTime = (time) => {
   if (!time) return '';
-  // 例如 "2025-12-30 14:00:00" -> "12-30 14:00"
-  return time.replace('T', ' ').substring(5, 16);
+  // 之前的写法 substring(5, 16) 会把年份去掉
+  // 改为 substring(0, 16) 保留 "YYYY-MM-DD HH:mm"
+  return String(time).replace('T', ' ').substring(0, 16);
 };
 
 const calculatePercent = (item) => {
@@ -207,7 +201,7 @@ const getProgressColorClass = (item) => {
 </script>
 
 <style scoped>
-/* 基础设置 */
+/* 样式代码保持不变 */
 .activity-page {
   background-color: #f5f7fa;
   min-height: 100vh;
@@ -215,7 +209,6 @@ const getProgressColorClass = (item) => {
   color: #333;
 }
 
-/* 头部区域 */
 .header-container {
   background: #fff;
   padding: 12px 0 0 0;
@@ -248,7 +241,6 @@ const getProgressColorClass = (item) => {
   outline: none;
 }
 
-/* Tabs */
 .tabs-scroll-area {
   overflow-x: auto;
   padding: 0 16px 12px;
@@ -273,7 +265,6 @@ const getProgressColorClass = (item) => {
   font-weight: 600;
 }
 
-/* 列表卡片 */
 .activity-list { padding: 16px; }
 
 .activity-card {
@@ -292,7 +283,6 @@ const getProgressColorClass = (item) => {
   transform: scale(0.99);
 }
 
-/* 左侧图片 */
 .card-cover {
   width: 100px;
   height: 100px;
@@ -306,7 +296,6 @@ const getProgressColorClass = (item) => {
   border-radius: 12px 0 0 12px;
 }
 
-/* 状态角标 */
 .status-badge {
   position: absolute;
   top: 6px;
@@ -322,30 +311,11 @@ const getProgressColorClass = (item) => {
   backdrop-filter: blur(4px);
 }
 
-/* 【新增】已报名角标样式 */
-.joined-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  background: rgba(82, 196, 26, 0.95); /* 鲜艳的绿色 */
-  color: #fff;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  z-index: 2;
-  display: flex;
-  align-items: center;
-}
-
 .dot { width: 4px; height: 4px; border-radius: 50%; background: #fff; }
 .status-blue { background: rgba(22, 119, 255, 0.85); }
 .status-cyan { background: rgba(19, 194, 194, 0.85); }
 .status-gray { background: rgba(0, 0, 0, 0.5); }
 
-/* 右侧内容 */
 .card-content {
   flex: 1;
   padding: 10px 12px;
@@ -377,7 +347,6 @@ const getProgressColorClass = (item) => {
   max-width: 140px;
 }
 
-/* 底部功能区 */
 .card-footer {
   display: flex;
   align-items: center;
@@ -405,7 +374,6 @@ const getProgressColorClass = (item) => {
 .fill-red { background: linear-gradient(90deg, #ff7875, #ff4d4f); }
 .fill-gray { background: #d9d9d9; }
 
-/* 按钮样式 */
 .go-btn {
   padding: 4px 10px;
   border-radius: 12px;
@@ -418,7 +386,6 @@ const getProgressColorClass = (item) => {
   min-width: 60px;
 }
 
-/* 普通状态 */
 .go-btn.normal {
   background: #e6f4ff;
   color: #1677ff;
@@ -428,7 +395,6 @@ const getProgressColorClass = (item) => {
   color: #fff;
 }
 
-/* 已报名状态 */
 .go-btn.joined {
   background: #f6ffed;
   color: #52c41a;

@@ -18,4 +18,6 @@ public interface ActivityMapper extends BaseMapper<Activity> {
      */
     @Update("UPDATE activity SET current_people = current_people + 1 WHERE activity_id = #{activityId} AND current_people < max_people")
     int increasePeopleCount(@Param("activityId") Long activityId);
+
+    Activity selectActivityById(Long activityId);
 }

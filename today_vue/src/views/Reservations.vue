@@ -23,8 +23,7 @@
           <span class="stat-label">全部</span>
         </div>
       </div>
-
-      <div class="stat-card ongoing" @click="setFilterStatus('1')" :class="{ active: filterStatus === '1' }">
+      <div class="stat-card ongoing" @click="setFilterStatus('ongoing')" :class="{ active: filterStatus === 'ongoing' }">
         <div class="stat-icon-bg">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
         </div>
@@ -33,8 +32,7 @@
           <span class="stat-label">进行中</span>
         </div>
       </div>
-
-      <div class="stat-card completed" @click="setFilterStatus('4')" :class="{ active: filterStatus === '4' }">
+      <div class="stat-card completed" @click="setFilterStatus('completed')" :class="{ active: filterStatus === 'completed' }">
         <div class="stat-icon-bg">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
         </div>
@@ -43,8 +41,7 @@
           <span class="stat-label">已完成</span>
         </div>
       </div>
-
-      <div class="stat-card cancelled" @click="setFilterStatus('3')" :class="{ active: filterStatus === '3' }">
+      <div class="stat-card cancelled" @click="setFilterStatus('cancelled')" :class="{ active: filterStatus === 'cancelled' }">
         <div class="stat-icon-bg">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
         </div>
@@ -67,13 +64,20 @@
             </div>
           </div>
         </div>
-        <div class="filter-row">
+        <div class="filter-row time-row">
           <div class="f-label">时间</div>
-          <div class="f-options">
-            <div v-for="opt in timeOptions" :key="opt.value"
-                 class="f-pill" :class="{ active: filterTime === opt.value }"
-                 @click="filterTime = opt.value">
-              {{ opt.label }}
+          <div class="date-range-box">
+            <div class="date-input-wrapper">
+              <input type="date" v-model="startDate" class="date-input" placeholder="开始日期">
+              <span class="date-placeholder" v-if="!startDate">开始日期</span>
+            </div>
+            <span class="range-separator">至</span>
+            <div class="date-input-wrapper">
+              <input type="date" v-model="endDate" class="date-input" placeholder="结束日期">
+              <span class="date-placeholder" v-if="!endDate">结束日期</span>
+            </div>
+            <div class="reset-date-btn" @click="resetDateFilter" v-if="startDate || endDate">
+              重置
             </div>
           </div>
         </div>
@@ -108,7 +112,7 @@
           v-for="item in filteredList"
           :key="item.uniqueId"
           class="record-card"
-          :class="getStatusClass(item.status)"
+          :class="getStatusClass(item.status, item.type)"
           @click="goDetail(item)"
       >
         <div class="card-header">
@@ -126,20 +130,23 @@
             </div>
           </div>
 
-          <div class="status-badge" :class="getStatusClass(item.status)">
-            {{ getStatusText(item.status) }}
+          <div class="status-badge" :class="getStatusClass(item.status, item.type)">
+            {{ getStatusText(item.status, item.type) }}
           </div>
         </div>
 
         <div class="card-body">
-          <div class="info-row">
+          <div class="info-row time-row-container">
             <span class="icon">📅</span>
-            <span class="text-bold">{{ formatDate(item.date) }}</span>
-            <span class="divider">|</span>
-            <span class="text">{{ item.timeRange }}</span>
+            <div class="time-range-inline">
+              <span class="time-val">{{ item.startTimeStr }}</span>
+              <span class="time-sep">~</span>
+              <span class="time-val">{{ item.endTimeStr || '待定' }}</span>
+            </div>
           </div>
+
           <div class="info-row">
-            <span class="icon">📍</span>
+            <span class="icon">🗺️</span>
             <span class="text">{{ item.location }}</span>
           </div>
           <div class="info-row sub-info">
@@ -187,7 +194,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-// 引入 API
 import { getMyReservations, cancelReservation } from '@/api/reservations.js'
 import { getMyActivityPage, cancelActivity } from '@/api/activity.js'
 
@@ -197,32 +203,23 @@ const showFilter = ref(false)
 const showCancelModal = ref(false)
 const selectedItem = ref(null)
 
-// 筛选状态
-const filterStatus = ref('all') // all, 1(进行), 4(完成), 3(取消)
-const filterType = ref('all')   // all, room, activity
-const filterTime = ref('all')   // all, today, future, past
+// 筛选状态: all, ongoing(进行中), completed(已完成), cancelled(已取消)
+const filterStatus = ref('all')
+const filterType = ref('all')
+const startDate = ref('')
+const endDate = ref('')
 
-// 原始数据
 const allRecords = ref([])
 
-// 选项配置
 const typeOptions = [
   { value: 'all', label: '全部' },
   { value: 'room', label: '教室' },
   { value: 'activity', label: '活动' }
 ]
-const timeOptions = [
-  { value: 'all', label: '全部' },
-  { value: 'today', label: '今天' },
-  { value: 'future', label: '未来' },
-  { value: 'past', label: '历史' }
-]
 
-// --- 核心逻辑：加载并合并数据 ---
 const loadData = async () => {
   loading.value = true
   try {
-    // 并行请求
     const [roomRes, actRes] = await Promise.all([
       getMyReservations(null).catch(() => ({ code: 500, data: [] })),
       getMyActivityPage({ current: 1, size: 100 }).catch(() => ({ code: 500, data: { records: [] } }))
@@ -230,9 +227,14 @@ const loadData = async () => {
 
     const merged = []
 
-    // 1. 处理教室数据
+    // 1. 处理教室数据 (Room)
+    // 假设状态: 0=待审核, 1=已预约, 2=已拒绝, 3=已取消, 4=已完成, 5=已过期
     if (roomRes.code === 200 && roomRes.data) {
       roomRes.data.forEach(item => {
+        const dateStr = item.reservationDate || '';
+        const startStr = dateStr + ' ' + (item.startTime ? item.startTime.substring(0, 5) : '');
+        const endStr = dateStr + ' ' + (item.endTime ? item.endTime.substring(0, 5) : '');
+
         merged.push({
           uniqueId: `room_${item.id}`,
           type: 'room',
@@ -241,22 +243,21 @@ const loadData = async () => {
           title: item.roomName,
           subTitle: item.communityName || '教学区',
           location: item.roomName,
-          date: item.reservationDate,
-          timeRange: `${item.startTime}-${item.endTime}`,
-          status: item.status,
+          date: dateStr,
+          startTimeStr: startStr,
+          endTimeStr: endStr,
+          status: String(item.status), // 强转字符串统一处理
           raw: item
         })
       })
     }
 
-    // 2. 处理活动数据
+    // 2. 处理活动数据 (Activity)
+    // 对应数据库: 0=已报名, 1=已签到, 2=已取消, 3=已完成
     const actList = actRes.data?.records || []
     actList.forEach(item => {
-      let mappedStatus = 1
-      const s = String(item.status)
-      if (s === '2') mappedStatus = 4 // 结束视为完成
-      else if (s === '3') mappedStatus = 3 // 取消
-      else mappedStatus = 1 // 报名中/进行中 视为 进行中
+      // 日期提取
+      const datePart = item.activityStartTime ? item.activityStartTime.split('T')[0] : '';
 
       merged.push({
         uniqueId: `act_${item.signupId}`,
@@ -266,17 +267,15 @@ const loadData = async () => {
         title: item.activityTitle,
         subTitle: '校园活动',
         location: item.activityLocation,
-        date: item.activityStartTime,
-        timeRange: formatTimeRange(item.activityStartTime, item.activityEndTime),
-        status: mappedStatus,
-        rawStatus: item.status,
+        date: datePart,
+        startTimeStr: formatFullTime(item.activityStartTime),
+        endTimeStr: formatFullTime(item.activityEndTime),
+        status: String(item.status), // 强转字符串
         raw: item
       })
     })
 
-    // 按日期倒序
     allRecords.value = merged.sort((a, b) => new Date(b.date) - new Date(a.date))
-
   } catch (err) {
     console.error(err)
     ElMessage.error('数据加载异常')
@@ -285,54 +284,93 @@ const loadData = async () => {
   }
 }
 
-// --- 筛选逻辑 ---
+// 🔥 核心修正：筛选与统计逻辑 🔥
+const getStatType = (item) => {
+  const s = item.status;
+  if (item.type === 'activity') {
+    // 活动: 0,1=进行中; 3=完成; 2=取消
+    if (['0', '1'].includes(s)) return 'ongoing';
+    if (s === '3') return 'completed';
+    if (s === '2') return 'cancelled';
+  } else {
+    // 教室: 0,1=进行中; 4=完成; 2,3,5=取消
+    if (['0', '1'].includes(s)) return 'ongoing';
+    if (s === '4') return 'completed';
+    if (['2', '3', '5'].includes(s)) return 'cancelled';
+  }
+  return 'other';
+}
+
+const stats = computed(() => {
+  const list = allRecords.value;
+  return {
+    total: list.length,
+    ongoing: list.filter(i => getStatType(i) === 'ongoing').length,
+    completed: list.filter(i => getStatType(i) === 'completed').length,
+    cancelled: list.filter(i => getStatType(i) === 'cancelled').length
+  }
+})
+
 const filteredList = computed(() => {
-  let list = allRecords.value
+  let list = allRecords.value;
 
   // 1. 状态筛选
   if (filterStatus.value !== 'all') {
-    list = list.filter(item => String(item.status) === String(filterStatus.value))
+    list = list.filter(i => getStatType(i) === filterStatus.value);
   }
 
   // 2. 类型筛选
   if (filterType.value !== 'all') {
-    list = list.filter(item => item.type === filterType.value)
+    list = list.filter(item => item.type === filterType.value);
   }
 
   // 3. 时间筛选
-  if (filterTime.value !== 'all') {
-    const now = new Date()
-    const todayStr = now.toISOString().split('T')[0]
-
-    list = list.filter(item => {
-      const itemDate = item.date.startsWith(todayStr) ? 'today' :
-          (new Date(item.date) > now ? 'future' : 'past')
-      return itemDate === 'today' ? filterTime.value === 'today' :
-          itemDate === 'future' ? filterTime.value === 'future' :
-              filterTime.value === 'past'
-    })
+  if (startDate.value) {
+    list = list.filter(item => item.date >= startDate.value);
   }
-  return list
+  if (endDate.value) {
+    list = list.filter(item => item.date <= endDate.value);
+  }
+  return list;
 })
 
-// --- 统计逻辑 ---
-const stats = computed(() => {
-  const list = allRecords.value
-  return {
-    total: list.length,
-    ongoing: list.filter(i => i.status === 1 || i.status === 0).length,
-    completed: list.filter(i => i.status === 4).length,
-    cancelled: list.filter(i => i.status === 3 || i.status === 2).length
+// 🔥 核心修正：显示文本与颜色 🔥
+const getStatusText = (s, type) => {
+  if (type === 'activity') {
+    const map = { '0': '已报名', '1': '已签到', '2': '已取消', '3': '已完成' };
+    return map[s] || '未知';
+  } else {
+    const map = { '0': '待审核', '1': '已预约', '2': '已拒绝', '3': '已取消', '4': '已完成', '5': '已过期' };
+    return map[s] || '未知';
   }
-})
+}
 
-// --- 交互方法 ---
-const setFilterStatus = (s) => filterStatus.value = s
+const getStatusClass = (s, type) => {
+  if (type === 'activity') {
+    if (['0', '1'].includes(s)) return 'st-blue';
+    if (s === '3') return 'st-green';
+    return 'st-gray';
+  } else {
+    if (['0', '1'].includes(s)) return 'st-blue';
+    if (s === '4') return 'st-green';
+    return 'st-gray';
+  }
+}
 
 const canCancel = (item) => {
-  if (item.status !== 1 && item.status !== 0) return false
-  return true
+  if (item.type === 'activity') {
+    return item.status === '0'; // 只有"已报名"未签到前可取消
+  } else {
+    return item.status === '0' || item.status === '1'; // 教室待审或预约成功可取消
+  }
 }
+
+const resetDateFilter = () => {
+  startDate.value = ''
+  endDate.value = ''
+}
+
+const setFilterStatus = (s) => filterStatus.value = s
 
 const confirmCancel = (item) => {
   selectedItem.value = item
@@ -342,7 +380,6 @@ const confirmCancel = (item) => {
 const executeCancel = async () => {
   if (!selectedItem.value) return
   const item = selectedItem.value
-
   try {
     let res
     if (item.type === 'room') {
@@ -355,7 +392,10 @@ const executeCancel = async () => {
       ElMessage.success('已取消')
       showCancelModal.value = false
       const target = allRecords.value.find(r => r.uniqueId === item.uniqueId)
-      if(target) target.status = 3
+      if(target) {
+        // 取消后，活动变为'2'，教室变为'3'
+        target.status = (item.type === 'activity') ? '2' : '3';
+      }
     } else {
       ElMessage.error(res.message || '操作失败')
     }
@@ -372,30 +412,16 @@ const goDetail = (item) => {
   }
 }
 
-// --- 格式化工具 ---
-const formatDate = (d) => {
-  if(!d) return ''
-  const date = new Date(d)
-  return `${date.getMonth()+1}月${date.getDate()}日`
-}
-const formatTimeRange = (s, e) => {
-  if(!s) return ''
-  return `${s.substring(11,16)} - ${e ? e.substring(11,16) : ''}`
-}
-const getStatusText = (s) => {
-  const map = { 0:'待审核', 1:'进行中', 2:'已拒绝', 3:'已取消', 4:'已完成', 5:'已过期' }
-  return map[s] || '未知'
-}
-const getStatusClass = (s) => {
-  const map = { 0:'st-blue', 1:'st-blue', 2:'st-gray', 3:'st-gray', 4:'st-green', 5:'st-gray' }
-  return map[s] || 'st-gray'
+const formatFullTime = (isoStr) => {
+  if (!isoStr) return ''
+  return String(isoStr).replace('T', ' ').substring(0, 16)
 }
 
 onMounted(() => loadData())
 </script>
 
 <style scoped>
-/* 基础变量 */
+/* 样式定义 */
 .reservations-container {
   min-height: 100vh;
   background-color: #f7f8fa;
@@ -403,7 +429,6 @@ onMounted(() => loadData())
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
 }
 
-/* 头部 */
 .header {
   background: #fff; padding: 16px 20px;
   display: flex; justify-content: space-between; align-items: center;
@@ -416,7 +441,6 @@ onMounted(() => loadData())
 .filter-toggle { display: flex; align-items: center; gap: 4px; font-size: 14px; color: #3b82f6; cursor: pointer; transition: opacity 0.2s; }
 .filter-toggle:active { opacity: 0.7; }
 
-/* 统计 Grid */
 .stats-grid {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
   padding: 12px 16px; margin-bottom: 8px;
@@ -432,21 +456,18 @@ onMounted(() => loadData())
 .stat-number { font-size: 18px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
 .stat-label { font-size: 11px; color: #9ca3af; }
 
-/* 统计卡片颜色 */
 .total .stat-icon-bg { background: #f3f4f6; color: #6b7280; } .total .stat-number { color: #374151; }
 .ongoing .stat-icon-bg { background: #dbeafe; color: #2563eb; } .ongoing .stat-number { color: #2563eb; }
 .completed .stat-icon-bg { background: #d1fae5; color: #059669; } .completed .stat-number { color: #059669; }
 .cancelled .stat-icon-bg { background: #fee2e2; color: #dc2626; } .cancelled .stat-number { color: #dc2626; }
 
-/* 筛选面板 */
 .filter-panel {
   background: #fff; padding: 16px 20px; border-radius: 0 0 16px 16px;
   margin-top: -10px; margin-bottom: 12px; position: relative; z-index: 10;
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
-.filter-row { margin-bottom: 12px; display: flex; align-items: center; }
-.filter-row:last-child { margin-bottom: 0; }
-.f-label { font-size: 13px; color: #6b7280; width: 40px; font-weight: 500; }
+.filter-row { margin-bottom: 16px; display: flex; align-items: center; }
+.f-label { font-size: 13px; color: #6b7280; width: 40px; font-weight: 500; flex-shrink: 0; }
 .f-options { display: flex; gap: 8px; overflow-x: auto; flex: 1; }
 .f-pill {
   padding: 4px 12px; background: #f9fafb; border: 1px solid #e5e7eb;
@@ -454,7 +475,21 @@ onMounted(() => loadData())
 }
 .f-pill.active { background: #eff6ff; border-color: #3b82f6; color: #3b82f6; font-weight: 500; }
 
-/* 列表卡片 */
+.date-range-box { display: flex; align-items: center; flex: 1; gap: 8px; }
+.date-input-wrapper {
+  flex: 1; position: relative; height: 32px; background: #f9fafb;
+  border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.date-input-wrapper input[type="date"] {
+  opacity: 1; border: none; background: transparent; width: 100%; height: 100%;
+  padding: 0 8px; font-size: 12px; color: #374151; font-family: inherit;
+  text-align: center; outline: none;
+}
+.date-placeholder { position: absolute; font-size: 12px; color: #9ca3af; pointer-events: none; }
+.range-separator { font-size: 12px; color: #9ca3af; }
+.reset-date-btn { font-size: 12px; color: #3b82f6; padding: 4px 8px; cursor: pointer; }
+
 .record-list { padding: 0 16px; display: flex; flex-direction: column; gap: 14px; }
 .record-card {
   background: #fff; border-radius: 16px; overflow: hidden;
@@ -469,17 +504,15 @@ onMounted(() => loadData())
 }
 .header-left { display: flex; gap: 12px; align-items: center; }
 
-/* 图标容器 */
 .icon-box {
   width: 40px; height: 40px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.icon-box.room { background: #eff6ff; color: #3b82f6; } /* 蓝色 */
-.icon-box.activity { background: #fff7ed; color: #f97316; } /* 橙色 */
+.icon-box.room { background: #eff6ff; color: #3b82f6; }
+.icon-box.activity { background: #fff7ed; color: #f97316; }
 
 .header-content { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
-/* 类型标签 */
 .type-badge {
   font-size: 10px; padding: 1px 6px; border-radius: 4px; width: fit-content; font-weight: 600;
 }
@@ -488,28 +521,32 @@ onMounted(() => loadData())
 
 .item-title { font-size: 15px; font-weight: 700; color: #111827; line-height: 1.3; }
 
-/* 状态标签 (修复点2：禁止换行) */
 .status-badge {
-  font-size: 12px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 6px;
-  white-space: nowrap; /* 强制不换行 */
-  flex-shrink: 0;      /* 防止被挤压 */
+  font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 6px;
+  white-space: nowrap; flex-shrink: 0;
 }
 .st-blue { color: #2563eb; background: #eff6ff; }
 .st-green { color: #059669; background: #ecfdf5; }
 .st-gray { color: #6b7280; background: #f3f4f6; }
 
-/* 卡片内容 */
 .card-body { padding: 12px 14px; }
 .info-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4b5563; margin-bottom: 6px; }
 .info-row.sub-info { color: #9ca3af; margin-top: 8px; font-size: 12px; }
 .icon { font-size: 14px; }
-.text-bold { font-weight: 600; color: #374151; }
-.divider { color: #e5e7eb; font-size: 10px; }
 
-/* 底部操作 */
+/* 强制时间不换行 */
+.time-range-inline {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.time-val { font-weight: 600; color: #374151; font-size: 12px; font-family: 'DIN Alternate', sans-serif; }
+.time-sep { font-size: 12px; color: #9ca3af; margin: 0 4px; }
+
 .card-footer { padding: 10px 14px; display: flex; justify-content: flex-end; gap: 10px; background: #fafafa; }
 .btn-action {
   padding: 6px 14px; border-radius: 14px; font-size: 12px; font-weight: 500; border: none; cursor: pointer;
@@ -517,7 +554,6 @@ onMounted(() => loadData())
 .btn-action.cancel { background: #fff; border: 1px solid #ef4444; color: #ef4444; }
 .btn-action.detail { background: #f3f4f6; color: #4b5563; }
 
-/* 加载与空状态 */
 .loading-state, .empty-state { text-align: center; padding: 60px 0; color: #9ca3af; }
 .spinner {
   width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: #3b82f6;
@@ -525,35 +561,14 @@ onMounted(() => loadData())
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* 空状态图标容器样式 */
-.empty-icon-bg {
-  width: 100px;
-  height: 100px;
-  background: #f1f5f9;
-  border-radius: 50%;
-  margin: 0 auto 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-}
-
-.empty-state h3 { font-size: 16px; font-weight: 600; color: #1f2937; margin-bottom: 8px; }
-.empty-state p { font-size: 13px; color: #6b7280; margin-bottom: 24px; }
-.empty-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: center; }
-.btn-primary { background: #3b82f6; color: #fff; padding: 8px 20px; border-radius: 20px; border: none; font-size: 13px; }
-.btn-outline { background: #fff; color: #3b82f6; border: 1px solid #3b82f6; padding: 8px 20px; border-radius: 20px; font-size: 13px; }
-
-/* 弹窗 */
 .modal-mask {
   position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000;
   display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px);
 }
 .modal-box {
   background: #fff; width: 80%; max-width: 320px; border-radius: 16px; padding: 24px;
-  text-align: center; animation: popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-align: center;
 }
-@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .modal-icon { width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; }
 .modal-icon.warning { background: #fef2f2; color: #ef4444; }
 .modal-box h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: #111827; }
@@ -563,7 +578,6 @@ onMounted(() => loadData())
 .btn-gray { background: #f3f4f6; color: #4b5563; }
 .btn-red { background: #ef4444; color: #fff; }
 
-/* 动画 */
 .expand-enter-active, .expand-leave-active { transition: all 0.3s ease; max-height: 200px; opacity: 1; overflow: hidden; }
 .expand-enter-from, .expand-leave-to { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; }
 </style>

@@ -7,79 +7,37 @@
 <script setup>
 import { onMounted } from 'vue'
 
-// 只要这个值变了，用户浏览器就会强制清除缓存
-const CURRENT_APP_VERSION = '20231224_v1.6'
+const nuclearCleanCheck = () => {
+  // 检查是否是"AuthCallback"回调页面（url里有code参数）
+  // 如果是回调页面，说明正在登录中，不能清缓存
+  const isCallback = window.location.href.includes('code=') || window.location.pathname.includes('/auth-callback');
 
-const autoClearCacheOnEntry = () => {
-  const localVersion = localStorage.getItem('app_version')
+  // 检查当前会话是否活跃
+  const isSessionActive = sessionStorage.getItem('session_active');
 
-  if (localVersion === CURRENT_APP_VERSION) {
-    console.log('当前版本已是最新的，无需清理缓存')
-    return
-  }
+  // 🔥 兜底逻辑：
+  // 如果当前【没有活跃会话】 且 【不是正在进行微信回调】
+  // 说明用户是新进来的（或者刷新了页面但Session丢了）
+  // 直接执行核弹清理，防止残留的 LocalStorage 导致串号
+  if (!isSessionActive && !isCallback) {
+    console.log('☢️ 检测到非活跃会话，执行核弹级清理...');
 
-  try {
-    console.log(`检测到新版本 (旧: ${localVersion} -> 新: ${CURRENT_APP_VERSION})，正在执行智能清理...`)
+    // 1. 只有当 localStorage 里真的有脏数据时才执行，避免死循环
+    if (localStorage.getItem('jwt_token') || localStorage.getItem('user_info')) {
+      localStorage.clear(); // 杀全家
+      sessionStorage.clear();
+      console.log('✅ 残留数据已清除');
 
-    const keepKeys = [
-      'jwt_token',
-      'wechat_openid',
-      'user_info',
-      'token_expire_time',
-      'wechat_auth_state'
-    ]
-    const savedData = {}
-    keepKeys.forEach(key => {
-      const val = localStorage.getItem(key)
-      if (val) savedData[key] = val
-    })
-
-    // --- B. 执行清除 ---
-
-    // 清除 LocalStorage
-    localStorage.clear()
-
-    // 清除 SessionStorage
-    sessionStorage.clear()
-
-    // 清除 Cookies (尝试清除根路径下的所有 Cookie)
-    document.cookie.split(";").forEach(function(c) {
-      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
-
-    // 清除 IndexedDB
-    if (window.indexedDB) {
-      window.indexedDB.databases().then(databases => {
-        databases.forEach(db => {
-          if (db.name) window.indexedDB.deleteDatabase(db.name)
-        })
-      })
+      // 2. 如果当前不在授权页，强制去授权页
+      if (!window.location.pathname.includes('/wechat-auth')) {
+        window.location.replace('/wechat-auth');
+      }
     }
-
-    // --- C. 还原白名单数据 ---
-    Object.keys(savedData).forEach(key => {
-      localStorage.setItem(key, savedData[key])
-    })
-
-    // --- D. 写入新版本号 ---
-    localStorage.setItem('app_version', CURRENT_APP_VERSION)
-
-    console.log('缓存清理完成，正在重新加载...')
-
-    // --- E. 强制刷新页面 ---
-    // 这一步很重要，确保内存中的旧状态也被清除
-    window.location.reload()
-
-  } catch (error) {
-    console.error('自动清除缓存异常:', error)
   }
 }
 
-// ================== 生命周期 ==================
-
 onMounted(() => {
-  // 执行自动检测与清理
-  autoClearCacheOnEntry()
+  nuclearCleanCheck();
 })
 </script>
 
@@ -87,7 +45,7 @@ onMounted(() => {
 .app-container {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   max-width: 100%;
-  background-color: #f5f7fa;
+  background-color: #f5f5f5;
   min-height: 100vh;
 }
 </style>

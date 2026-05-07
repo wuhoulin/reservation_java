@@ -5,8 +5,7 @@ spring:
   application:
     name: users
 
-  # 默认激活 dev 环境 (Windows)。
-  # 部署到宝塔时，在启动参数中添加 --spring.profiles.active=prod 即可切换
+  # ✅ 激活 dev 环境，这样才会加载 application-dev.yml
   profiles:
     active: dev
 
@@ -46,19 +45,14 @@ spring:
 
   ai:
     openai:
+      # 通义千问 Key
       api-key: ${dashscope.api-key:sk-5f83eb74be6b4fe49c0a62b03294db1e}
+      # 注意：这里不需要加 /v1，Spring AI 会自动拼接
       base-url: https://dashscope.aliyuncs.com/compatible-mode
       chat:
         options:
           model: ${dashscope.model-name:qwen-max}
           temperature: 0.7
-
-    mcp:
-      client:
-        enabled: true
-        name: my-mcp-client
-        version: 1.0.0
-        type: SYNC
 
 swagger:
   enable: true
@@ -70,6 +64,7 @@ logging:
     com.zaxxer.hikari: INFO
     org.springframework.jdbc: INFO
     com.microservice.skeleton.user.mapper: DEBUG
+    # ✅ 开启 MCP 调试日志，方便看是否启动成功
     org.springframework.ai.mcp: DEBUG
 
 jwt:
@@ -80,5 +75,6 @@ wechat:
   appId: wxc202b4632d79f73b
   appSecret: 90c9703c42a6b1bb62ea023998f956cd
 
+# 这个配置留给 Java 代码用，但 MCP 进程读不到这个，所以要在下面单独传
 amap:
   api-key: ${AMAP_API_KEY:your-amap-api-key}

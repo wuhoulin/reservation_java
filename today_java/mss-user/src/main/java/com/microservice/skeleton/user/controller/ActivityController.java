@@ -26,7 +26,7 @@ public class ActivityController {
     private ActivityService activityService;
 
     @PostMapping
-    @Operation(summary = "创建活动") // 修改：@ApiOperation -> @Operation
+    @Operation(summary = "创建活动")
     public ApiResponse<ActivityResponse> createActivity(@Valid @RequestBody ActivityRequest request) {
         ActivityResponse response = activityService.createActivity(request);
         return ApiResponse.success(response);

@@ -16,13 +16,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
-
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/wechat")
@@ -48,9 +49,140 @@ public class WeChatAuthController {
     @Autowired
     private UserMapper userMapper;
 
+    // === 简单的内存缓存 (生产环境建议换成 Redis) ===
+    private static final Map<String, String> CACHE = new ConcurrentHashMap<>();
+    private static final Map<String, Long> EXPIRE_MAP = new ConcurrentHashMap<>();
+
     /**
-     * 生成微信授权URL
+     * 获取微信 JS-SDK 配置 (用于分享)
      */
+    @GetMapping("/js-sdk-config")
+    public Map<String, Object> getJsSdkConfig(@RequestParam String url) {
+        try {
+            // 1. 获取基础 access_token (带缓存)
+            String accessToken = getBaseAccessToken();
+
+            // 2. 获取 jsapi_ticket (带缓存)
+            String jsapiTicket = getJsApiTicket(accessToken);
+
+            // 3. 生成签名参数
+            String nonceStr = generateRandomState();
+            long timestamp = System.currentTimeMillis() / 1000;
+
+            // 4. 拼接签名字符串 (注意顺序必须是: jsapi_ticket, noncestr, timestamp, url)
+            String string1 = "jsapi_ticket=" + jsapiTicket +
+                    "&noncestr=" + nonceStr +
+                    "&timestamp=" + timestamp +
+                    "&url=" + url;
+
+            log.info("JS-SDK签名串: {}", string1);
+
+            // 5. SHA1签名
+            String signature = SHA1(string1);
+
+            Map<String, Object> config = new HashMap<>();
+            config.put("appId", appId);
+            config.put("timestamp", timestamp);
+            config.put("nonceStr", nonceStr);
+            config.put("signature", signature);
+
+            return config;
+
+        } catch (Exception e) {
+            log.error("获取JS-SDK配置失败", e);
+            throw new RuntimeException("获取JS-SDK配置失败");
+        }
+    }
+
+    /**
+     * 获取基础 AccessToken (需缓存 7200s)
+     */
+    private String getBaseAccessToken() {
+        String cacheKey = "base_access_token";
+        if (CACHE.containsKey(cacheKey) && EXPIRE_MAP.get(cacheKey) > System.currentTimeMillis()) {
+            return CACHE.get(cacheKey);
+        }
+
+        String url = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=" + appId + "&secret=" + appSecret;
+        RestTemplate restTemplate = new RestTemplate();
+        try {
+            String response = restTemplate.getForObject(url, String.class);
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> data = mapper.readValue(response, Map.class);
+
+            if (data.containsKey("access_token")) {
+                String token = (String) data.get("access_token");
+                Integer expiresIn = (Integer) data.get("expires_in");
+
+                // 缓存起来 (提前200秒过期，防止临界点问题)
+                CACHE.put(cacheKey, token);
+                EXPIRE_MAP.put(cacheKey, System.currentTimeMillis() + (expiresIn - 200) * 1000L);
+                return token;
+            } else {
+                throw new RuntimeException("获取基础AccessToken失败: " + response);
+            }
+        } catch (Exception e) {
+            log.error("获取基础AccessToken异常", e);
+            throw new RuntimeException("获取基础AccessToken异常");
+        }
+    }
+
+    /**
+     * 获取 JsApiTicket (需缓存 7200s)
+     */
+    private String getJsApiTicket(String accessToken) {
+        String cacheKey = "jsapi_ticket";
+        if (CACHE.containsKey(cacheKey) && EXPIRE_MAP.get(cacheKey) > System.currentTimeMillis()) {
+            return CACHE.get(cacheKey);
+        }
+
+        String url = "https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=" + accessToken + "&type=jsapi";
+        RestTemplate restTemplate = new RestTemplate();
+        try {
+            String response = restTemplate.getForObject(url, String.class);
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> data = mapper.readValue(response, Map.class);
+
+            if (data.containsKey("ticket")) {
+                String ticket = (String) data.get("ticket");
+                Integer expiresIn = (Integer) data.get("expires_in");
+
+                // 缓存起来
+                CACHE.put(cacheKey, ticket);
+                EXPIRE_MAP.put(cacheKey, System.currentTimeMillis() + (expiresIn - 200) * 1000L);
+                return ticket;
+            } else {
+                throw new RuntimeException("获取Ticket失败: " + response);
+            }
+        } catch (Exception e) {
+            log.error("获取Ticket异常", e);
+            throw new RuntimeException("获取Ticket异常");
+        }
+    }
+
+    /**
+     * SHA1 加密工具
+     */
+    private String SHA1(String str) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-1");
+            digest.update(str.getBytes());
+            byte[] messageDigest = digest.digest();
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : messageDigest) {
+                String shaHex = Integer.toHexString(b & 0xFF);
+                if (shaHex.length() < 2) {
+                    hexString.append(0);
+                }
+                hexString.append(shaHex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "";
+        }
+    }
+
     /**
      * 生成微信授权URL - HTTPS版本
      */
@@ -309,11 +441,9 @@ public class WeChatAuthController {
                         .updateBy("wechat_auth")
                         .updateTime(LocalDateTime.now())
                         .remark("微信授权自动注册用户，openid：" + userInfo.getOpenid())
-                        // 🟢 插入头像
                         .avatar(userInfo.getHeadimgurl() != null ? userInfo.getHeadimgurl() : "")
                         .build();
 
-                // 自增主键，无需手动设置userId
                 userMapper.insert(newUser);
                 log.info("新增微信用户: userId={}, openid={}, nickname={}",
                         newUser.getUserId(), newUser.getOpenid(), newUser.getNickName());

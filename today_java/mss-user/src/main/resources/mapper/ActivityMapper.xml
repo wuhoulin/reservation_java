@@ -25,4 +25,8 @@
         <result column="update_time" property="updateTime" />
         <result column="remark" property="remark" />
     </resultMap>
+    <select id="selectActivityById" resultType="com.microservice.skeleton.user.domain.entity.Activity">
+        SELECT * FROM activity
+        WHERE activity_id = #{activityId}
+          AND del_flag = '0'  </select>
 </mapper>

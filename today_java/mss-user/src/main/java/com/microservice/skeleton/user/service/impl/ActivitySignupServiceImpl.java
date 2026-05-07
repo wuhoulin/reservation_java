@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.microservice.skeleton.user.domain.BusinessException;
 import com.microservice.skeleton.user.domain.Response.ActivitySignupResponse;
 import com.microservice.skeleton.user.domain.entity.Activity;
 import com.microservice.skeleton.user.domain.entity.ActivitySignup;
@@ -71,25 +72,41 @@ public class ActivitySignupServiceImpl extends ServiceImpl<ActivitySignupMapper,
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void cancelSignup(Long activityId, String userId) {
-        // 查记录
+        // 1. 查询报名记录
         LambdaQueryWrapper<ActivitySignup> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ActivitySignup::getActivityId, activityId)
                 .eq(ActivitySignup::getUserId, userId)
-                .eq(ActivitySignup::getStatus, "0");
+                .eq(ActivitySignup::getStatus, "0"); // 0=已报名
         ActivitySignup signup = this.getOne(wrapper);
 
         if (signup == null) {
+            // 建议统一使用 ServiceException 或 BusinessException
             throw new RuntimeException("无有效报名记录");
         }
 
-        // 改状态
+        Activity activity = activityMapper.selectActivityById(activityId);
+        if (activity == null) {
+            throw new BusinessException("关联的活动不存在");
+        }
+
+        Date now = new Date();
+        Date startTime = activity.getStartTime();
+
+        if (startTime != null) {
+            long diff = startTime.getTime() - now.getTime();
+            if (diff < 10800000) {
+                throw new BusinessException("活动即将开始或已开始，无法取消报名（需提前3小时）");
+            }
+        }
+
+        // 4. 更新报名状态为已取消 (2)
         signup.setStatus("2");
         this.updateById(signup);
 
-        // 原子减少人数
+        // 5. 原子操作归还名额 (current_people - 1)
         LambdaUpdateWrapper<Activity> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(Activity::getActivityId, activityId)
-                .gt(Activity::getCurrentPeople, 0) // 防止负数
+                .gt(Activity::getCurrentPeople, 0) // 双重保险，防止减成负数
                 .setSql("current_people = current_people - 1");
         activityMapper.update(null, updateWrapper);
     }

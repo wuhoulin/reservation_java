@@ -1,7 +1,6 @@
 <template>
   <div class="student-reservations">
     <div class="user-header">
-      <!-- 修复1：添加可选链 ?. 防止 userInfo 为 null/undefined -->
       <div class="user-avatar" @click="goToUserProfile" style="cursor: pointer;">
         <img :src="userInfo?.headimgurl || defaultAvatar" alt="头像" />
       </div>
@@ -11,22 +10,23 @@
       </div>
     </div>
 
-    <!-- 快捷入口（样式不变） -->
     <div class="quick-card">
       <div class="quick-stats">
-        <div class="quick-stat-item" @click="viewAllReservations('all')">
+        <div class="quick-stat-item" >
           <span class="quick-count" :class="{ loading: loading }">
             {{ loading ? '' : totalReservations }}
           </span>
-          <span class="quick-label">预约记录</span>
+          <span class="quick-label">社区预约</span>
         </div>
-        <div class="quick-stat-item" @click="goToFavorites">
-          <span class="quick-count" :class="{ loading: loadingFavorites }">
-            {{ loadingFavorites ? '' : favoriteCount }}
+
+        <div class="quick-stat-item" >
+          <span class="quick-count" :class="{ loading: loadingActivity }">
+            {{ loadingActivity ? '' : activityCount }}
           </span>
-          <span class="quick-label">收藏教室</span>
+          <span class="quick-label">活动报名</span>
         </div>
-        <div class="quick-stat-item" @click="goToMessages">
+
+        <div class="quick-stat-item" >
           <span class="quick-count" :class="{ loading: loadingMessages }">
             {{ loadingMessages ? '' : messageCount }}
           </span>
@@ -35,7 +35,6 @@
       </div>
     </div>
 
-    <!-- 功能菜单网格（不变） -->
     <div class="menu-grid">
       <div class="menu-item" @click="viewAllReservations('all')">
         <div class="menu-icon green">
@@ -46,17 +45,18 @@
             <line x1="3" y1="10" x2="21" y2="10"></line>
           </svg>
         </div>
-        <span class="menu-text">我的预约</span>
+        <span class="menu-text">社区预约</span>
         <span class="menu-arrow">›</span>
       </div>
 
-      <div class="menu-item" @click="goToFavorites">
-        <div class="menu-icon pink">
+      <div class="menu-item" @click="goToMyActivities">
+        <div class="menu-icon purple">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+            <line x1="4" y1="22" x2="4" y2="15"></line>
           </svg>
         </div>
-        <span class="menu-text">收藏教室</span>
+        <span class="menu-text">活动报名</span>
         <span class="menu-arrow">›</span>
       </div>
 
@@ -105,12 +105,10 @@
       </div>
     </div>
 
-    <!-- 消息提示 -->
     <div v-if="showMessage" class="message-toast" :class="messageType">
       {{ messageText }}
     </div>
 
-    <!-- 自定义清除缓存弹窗（去掉图标） -->
     <div v-if="showClearCacheDialog" class="cache-dialog-overlay">
       <div class="cache-dialog">
         <div class="dialog-content">
@@ -135,14 +133,15 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
-// 导入接口（不变）
+// 导入接口
 import { getMyReservations } from '@/api/reservations.js'
 import { getFavorites } from '@/api/favorite.js'
 import { getUnreadCount, getNotifications } from '@/api/notification.js'
+import { getMyActivityPage } from '@/api/activity.js'
 
 const router = useRouter()
 
-// 修复2：初始化 userInfo 为非空对象，避免初始渲染报错
+// 用户信息
 const userInfo = ref({
   headimgurl: '',
   nickname: '',
@@ -150,73 +149,46 @@ const userInfo = ref({
 })
 const reservations = ref([])
 
-// 加载状态（不变）
+// 加载状态
 const loading = ref(true)
-const loadingFavorites = ref(true)
+const loadingFavorites = ref(true) // 保留变量定义防止报错，虽然界面不再显示收藏
 const loadingMessages = ref(true)
+const loadingActivity = ref(true)
 
-// 消息提示相关状态（不变）
+// 消息提示相关状态
 const showMessage = ref(false)
 const messageText = ref('')
 const messageType = ref('success')
 
-// 清除缓存弹窗状态（不变）
+// 清除缓存弹窗状态
 const showClearCacheDialog = ref(false)
 
-// 定时器引用（不变）
+// 定时器
 const refreshTimer = ref(null)
 
-// 默认头像（不变）
+// 默认头像
 const defaultAvatar = 'https://thirdwx.qlogo.cn/mmopen/vi_32/POgEwh4mIHO4nibH0KlMECNjjGxQUq24ZEaGT4poC6icRiccVGKSyXwibcPq4BWmiaIGuG1icwxaQX6grC9VemZoJ8rg/132'
 
-// 初始化数据（不变）
+// 数据统计
 const favoriteCount = ref(0)
 const messageCount = ref(0)
-const totalNotifications = ref(0)
+const activityCount = ref(0)
 
-// 计算属性（不变）
+// 计算属性
 const totalReservations = computed(() => reservations.value.length)
-const activeReservations = computed(() =>
-    reservations.value.filter(r => r.status === 0 || r.status === 1).length)
-const completedReservations = computed(() =>
-    reservations.value.filter(r => r.status === 3 || r.status === 4).length)
-const rejectedReservations = computed(() =>
-    reservations.value.filter(r => r.status === 2).length)
 
-// 处理清除缓存逻辑（不变）
+// 处理清除缓存逻辑
 const handleClearCache = () => {
   showClearCacheDialog.value = false
   try {
-    console.log('开始清除所有缓存...')
     const itemsToRemove = [
-      'wechat_openid',
-      'jwt_token',
-      'user_info',
-      'token_expire_time',
-      'wechat_auth_state',
-      'wechat_auth_scope',
-      'reservation_data',
-      'community_data',
-      'unread_messages'
+      'wechat_openid', 'jwt_token', 'user_info', 'token_expire_time',
+      'wechat_auth_state', 'wechat_auth_scope', 'reservation_data',
+      'community_data', 'unread_messages'
     ]
-    itemsToRemove.forEach(item => {
-      localStorage.removeItem(item)
-    })
+    itemsToRemove.forEach(item => localStorage.removeItem(item))
     sessionStorage.clear()
-    if (window.indexedDB) {
-      window.indexedDB.databases().then(databases => {
-        databases.forEach(db => {
-          if (db.name) {
-            window.indexedDB.deleteDatabase(db.name)
-          }
-        })
-      })
-    }
-    document.cookie.split(";").forEach(cookie => {
-      const eqPos = cookie.indexOf("=")
-      const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim()
-      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`
-    })
+
     showMessage.value = true
     messageText.value = '缓存清除成功，即将重新加载...'
     messageType.value = 'success'
@@ -228,195 +200,149 @@ const handleClearCache = () => {
     showMessage.value = true
     messageText.value = '清除失败，请重试'
     messageType.value = 'error'
-    setTimeout(() => {
-      showMessage.value = false
-    }, 3000)
+    setTimeout(() => showMessage.value = false, 3000)
   }
 }
 
-// 修复3：加载用户信息时增加容错处理，避免 JSON 解析失败
+// 加载用户信息
 const loadUserInfo = () => {
   try {
     const userInfoStr = localStorage.getItem('user_info')
     if (userInfoStr) {
-      // 增加 JSON 解析容错
       const parsedInfo = JSON.parse(userInfoStr)
-      // 只覆盖有值的属性，避免清空默认值
-      userInfo.value = {
-        ...userInfo.value,
-        ...parsedInfo
-      }
+      userInfo.value = { ...userInfo.value, ...parsedInfo }
     }
   } catch (error) {
     console.error('解析用户信息失败:', error)
-    // 解析失败时保留默认空对象，避免渲染报错
-    userInfo.value = {
-      headimgurl: '',
-      nickname: '',
-      openid: ''
-    }
   }
 }
 
-// 加载预约信息（不变）
+// 加载预约信息
 const loadReservations = async () => {
   try {
     loading.value = true
     const response = await getMyReservations(null)
     if (response.code === 200 && response.data) {
       reservations.value = response.data || []
-    } else {
-      throw new Error(response.message || '获取预约记录失败')
     }
   } catch (error) {
     console.error('加载预约信息失败:', error)
-    ElMessage.error('加载预约记录失败，请稍后重试')
     reservations.value = []
   } finally {
     loading.value = false
   }
 }
 
-// 加载收藏数量（不变）
-const loadFavoritesCount = async () => {
-  try {
-    loadingFavorites.value = true
-    const response = await getFavorites()
-    if (response.code === 200 && response.data) {
-      favoriteCount.value = response.data.length || 0
-    } else {
-      throw new Error(response.message || '获取收藏数量失败')
-    }
-  } catch (error) {
-    console.error('加载收藏数量失败:', error)
-    ElMessage.error('加载收藏信息失败')
-    favoriteCount.value = 0
-  } finally {
-    loadingFavorites.value = false
-  }
-}
-
-// 加载消息数量（不变）
+// 加载消息数量
 const loadMessageCount = async () => {
   try {
     loadingMessages.value = true
-
     const unreadResponse = await getUnreadCount()
     if (unreadResponse.code === 200) {
       messageCount.value = unreadResponse.data || 0
-    } else {
-      console.warn('获取未读数量失败:', unreadResponse.message)
-      messageCount.value = 0
     }
-
-    try {
-      const listResponse = await getNotifications(1, 1)
-      if (listResponse.code === 200 && listResponse.data) {
-        totalNotifications.value = listResponse.data.total || 0
-      }
-    } catch (listError) {
-      console.warn('获取总通知数量失败:', listError)
-    }
-
+    // 缓存消息数
     if (messageCount.value > 0) {
       localStorage.setItem('unread_messages', messageCount.value.toString())
     } else {
       localStorage.removeItem('unread_messages')
     }
-
   } catch (error) {
     console.error('加载消息数量失败:', error)
-
+    // 降级使用缓存
     const cachedCount = localStorage.getItem('unread_messages')
     messageCount.value = cachedCount ? parseInt(cachedCount) : 0
-
-    if (error.message.includes('Network Error')) {
-      console.warn('网络连接失败，使用缓存的未读消息数量')
-    } else {
-      ElMessage.warning('加载消息通知失败，请检查网络')
-    }
   } finally {
     loadingMessages.value = false
   }
 }
 
-// 定时刷新消息数量（不变）
-const startMessageRefresh = () => {
-  refreshTimer.value = setInterval(() => {
-    if (!document.hidden) {
-      loadMessageCount()
+// 🟢 关键修复：加载我的活动数量
+const loadActivityCount = async () => {
+  try {
+    loadingActivity.value = true
+    const response = await getMyActivityPage({ current: 1, size: 1 })
+
+    // 🔍 调试日志，如果还是 0，请查看浏览器控制台打印的结构
+    console.log('API 返回结果:', response);
+
+    // 🌟 核心兼容解析逻辑：应对不同层级的返回结构
+    let total = 0;
+    if (response.code === 200) {
+      // 情况 1: 响应是一个 PageResult 对象，直接有 total 属性
+      if (typeof response.data?.total !== 'undefined') {
+        total = response.data.total;
+      }
+      // 情况 2: 响应直接包含 total (某些 RuoYi 拦截器会解包 data)
+      else if (typeof response.total !== 'undefined') {
+        total = response.total;
+      }
+      // 情况 3: 返回的是一个数组，取长度
+      else if (Array.isArray(response.data)) {
+        total = response.data.length;
+      }
     }
-  }, 60000)
+
+    activityCount.value = total;
+  } catch (error) {
+    console.error('加载活动数量失败:', error)
+    activityCount.value = 0
+  } finally {
+    loadingActivity.value = false
+  }
 }
 
-// 页面跳转方法（不变）
+// 页面跳转方法
 const viewAllReservations = (filterType = 'all') => {
-  router.push({
-    path: '/reservations',
-    query: { filter: filterType }
-  })
+  router.push({ path: '/reservations', query: { filter: filterType } })
 }
 
-const goToUserProfile = () => {
-  router.push('/user-profile')
+const goToUserProfile = () => router.push('/user-profile')
+const goToFavorites = () => router.push('/favorites')
+const goToMessages = () => router.push('/notifications')
+const goToFeedback = () => router.push('/feedback')
+const goToAbout = () => { /* router.push('/about') */ }
+
+// 🟢 修复跳转链接
+const goToMyActivities = () => {
+  // 修正为路由文件中配置的真实路径 activity-list
+  router.push({ path: '/activity-list', query: { tab: 'joined' } })
 }
 
-const goToFavorites = () => {
-  router.push('/favorites')
-}
-
-const goToMessages = () => {
-  router.push('/notifications')
-}
-
-const goToFeedback = () => {
-  router.push('/feedback')
-}
-
-const goToHelp = () => {
-  router.push('/help')
-}
-
-const goToAbout = () => {
-  // router.push('/about')
-}
-
-// 监听页面可见性变化（不变）
+// 监听页面可见性，刷新消息
 const handleVisibilityChange = () => {
   if (!document.hidden) {
     loadMessageCount()
   }
 }
 
-// 初始化数据（不变）
+// 初始化数据
 const initData = async () => {
   loadUserInfo()
   await Promise.all([
     loadReservations(),
-    loadFavoritesCount(),
-    loadMessageCount()
+    loadMessageCount(),
+    loadActivityCount() // 🟢 确保调用
   ])
 }
 
-// 生命周期（不变）
 onMounted(() => {
   initData()
-  startMessageRefresh()
+  // 消息轮询
+  refreshTimer.value = setInterval(() => {
+    if (!document.hidden) loadMessageCount()
+  }, 60000)
   document.addEventListener('visibilitychange', handleVisibilityChange)
-  window.addEventListener('focus', loadMessageCount)
 })
 
 onUnmounted(() => {
-  if (refreshTimer.value) {
-    clearInterval(refreshTimer.value)
-  }
+  if (refreshTimer.value) clearInterval(refreshTimer.value)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
-  window.removeEventListener('focus', loadMessageCount)
 })
 </script>
 
 <style scoped>
-/* 所有样式保持不变 */
+/* 样式保持不变，新增 purple 图标样式 */
 .student-reservations {
   min-height: calc(100vh - 70px);
   padding: 16px;
@@ -549,23 +475,6 @@ onUnmounted(() => {
   color: #1976d2;
 }
 
-.quick-stat-item.has-unread .quick-count {
-  color: #ff4757;
-  position: relative;
-}
-
-.quick-stat-item.has-unread .quick-count::after {
-  content: '';
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 8px;
-  height: 8px;
-  background: #ff4757;
-  border-radius: 50%;
-  border: 2px solid white;
-}
-
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -630,14 +539,9 @@ onUnmounted(() => {
   color: #e53935;
 }
 
-.menu-icon.orange {
-  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-  color: #fb8c00;
-}
-
-.menu-icon.teal {
-  background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
-  color: #00897b;
+.menu-icon.purple {
+  background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+  color: #8e24aa;
 }
 
 .menu-icon.gray {
