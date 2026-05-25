@@ -349,7 +349,7 @@ const handleNavigate = () => {
 
 const fetchAiRoute = async (from, to) => {
   try {
-    const apiUrl = `http://43.139.169.190:9072/ai/route?from=${from}&to=${to}`;
+    const apiUrl = `http://8.134.39.197:9072/ai/route?from=${from}&to=${to}`;
 
     const res = await fetch(apiUrl);
     const text = await res.text();

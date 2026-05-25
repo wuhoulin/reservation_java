@@ -196,9 +196,9 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
             TimePoint endTimePoint = timePointService.getById(reservation.getEndTimeId());
             if (endTimePoint == null) return;
 
-            // ⚠️ 注意：延时任务的执行时间也需要顺延到活动真正结束（原结束点 + 30分钟）
-            // 这样活动结束时，系统才会自动标记为"已完成"
-            LocalDateTime endDateTime = reservation.getReservationDate().atTime(endTimePoint.getPoint().plusMinutes(30));
+            // ⚠️ 注意：延时任务的执行时间是活动结束时间点
+            // 左闭右闭：用户选择 09:00~11:00，占用 09:00,09:30,10:00,10:30,11:00，活动结束时间是 11:00
+            LocalDateTime endDateTime = reservation.getReservationDate().atTime(endTimePoint.getPoint());
 
             DelayQueueMessage message = new DelayQueueMessage();
             message.setReservationNo(reservation.getReservationNo());
@@ -283,8 +283,8 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
 
             TimeRangeDto dto = new TimeRangeDto();
             dto.setStart(startPoint.getPoint().toString());
-            // 🟢 修改处：结束时间 + 30分钟
-            dto.setEnd(endPoint.getPoint().plusMinutes(30).toString());
+            // 🟢 左闭右闭：直接显示结束时间点，不加30分钟
+            dto.setEnd(endPoint.getPoint().toString());
             dto.setReservationNo(reservationNo);
             dto.setUserId(reservation != null ? reservation.getUserId() : "");
             reservedRanges.add(dto);
@@ -397,11 +397,10 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
         if (reservation.getStatus() != 1) throw new RuntimeException("当前状态不可签到");
 
         LocalDateTime now = LocalDateTime.now();
-        // ⚠️ 这里获取 endTime 时，如果需要判断是否活动已结束，建议也加上 30 分钟
-        // 这里暂时保持原逻辑 getRealTime(..., endTimeId) 是获取该ID对应的时间（如08:00）。
-        // 如果想表达活动彻底结束（08:30），需要 plusMinutes(30)
+        // 🟢 左闭右闭：活动结束时间就是结束时间点
+        // 用户选择 09:00~11:00，活动时间是 09:00~11:00
         LocalDateTime startTime = getRealTime(reservation.getReservationDate(), reservation.getStartTimeId());
-        LocalDateTime endTime = getRealTime(reservation.getReservationDate(), reservation.getEndTimeId()).plusMinutes(30);
+        LocalDateTime endTime = getRealTime(reservation.getReservationDate(), reservation.getEndTimeId());
 
         if (now.isBefore(startTime.minusMinutes(15))) {
             throw new RuntimeException("活动未开始，请在开始前15分钟内签到");
@@ -526,8 +525,9 @@ public class ReservationServiceImpl extends ServiceImpl<ReservationMapper, Reser
 
         TimePoint endTp = timePointMapper.selectById(reservation.getEndTimeId());
         if (endTp != null) {
-            // 🟢 核心修改：数据库存的是"最后占用的时间点"，显示的结束时间应该是该点 + 30分钟
-            vo.setEndTime(endTp.getPoint().plusMinutes(30).toString());
+            // 🟢 左闭右闭：直接显示结束时间点，不加30分钟
+            // 用户选择 09:00~11:00，显示 09:00~11:00
+            vo.setEndTime(endTp.getPoint().toString());
         }
 
         if (reservation.getStatus() != null) {

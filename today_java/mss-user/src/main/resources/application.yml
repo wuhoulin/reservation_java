@@ -10,7 +10,7 @@ spring:
     active: dev
 
   datasource:
-    url: jdbc:mysql://43.139.169.190:3306/today?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://8.134.39.197:3306/today?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: today
     password: whl13616963610
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -27,7 +27,7 @@ spring:
 
   data:
     redis:
-      host: 43.139.169.190
+      host: 8.134.39.197
       port: 6379
       password: redis
       timeout: 5000ms
@@ -45,9 +45,7 @@ spring:
 
   ai:
     openai:
-      # 通义千问 Key
       api-key: ${dashscope.api-key:sk-5f83eb74be6b4fe49c0a62b03294db1e}
-      # 注意：这里不需要加 /v1，Spring AI 会自动拼接
       base-url: https://dashscope.aliyuncs.com/compatible-mode
       chat:
         options:

@@ -592,10 +592,10 @@ const proceedWithBooking = async () => {
       const startIndex = filteredTimePoints.value.findIndex(tp => tp.id === selectedStartTimeId.value);
       const endIndex = filteredTimePoints.value.findIndex(tp => tp.id === selectedEndTimeId.value);
 
-      // 🟢 关键修改：左闭右开逻辑 [Start, End)
-      // 使用 slice(startIndex, endIndex) 不包含结束索引
-      // 这样提交给后端时，不会包含结束那个点的时间片
-      return filteredTimePoints.value.slice(startIndex, endIndex).map(tp => tp.id);
+      // 🟢 左闭右闭逻辑 [Start, End]
+      // 使用 slice(startIndex, endIndex + 1) 包含结束索引
+      // 用户选择 08:30 ~ 10:00，占用 08:30, 09:00, 09:30, 10:00 四个时间点
+      return filteredTimePoints.value.slice(startIndex, endIndex + 1).map(tp => tp.id);
     };
     const timePointIds = getRangeTimePointIds();
 

@@ -2,15 +2,4 @@ spring:
   ai:
     mcp:
       client:
-        enabled: true
-        type: sync
-        name: amap-client
-        stdio:
-          connections:
-            amap-map-server:
-              command: "npx.cmd"
-              args:
-                - "-y"
-                - "@amap/amap-maps-mcp-server"
-              env:
-                AMAP_MAPS_API_KEY: "2e71becaab7d6d895539951a2a7a07e0"
+        enabled: false

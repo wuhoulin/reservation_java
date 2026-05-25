@@ -169,10 +169,15 @@ public class TimePointServiceImpl extends ServiceImpl<TimePointMapper, TimePoint
                         .orderByAsc("point")
         );
 
-        // 3. 找出已被预约的时间点ID (保留)
-        Set<Integer> reservedTimePointIds = reservations.stream()
-                .flatMap(r -> Stream.of(r.getStartTimeId(), r.getEndTimeId()))
-                .collect(Collectors.toSet());
+        // 🟢 修复bug：收集整个时间范围内的所有时间点（左闭右闭）
+        // 之前只收集了开始和结束两个点，遗漏了中间的点
+        Set<Integer> reservedTimePointIds = new HashSet<>();
+        for (Reservation r : reservations) {
+            // 左闭右闭：包含开始到结束的所有时间点
+            for (int i = r.getStartTimeId(); i <= r.getEndTimeId(); i++) {
+                reservedTimePointIds.add(i);
+            }
+        }
 
 
         // 调用 RoomTimeMapper 查询被禁用的时间点 ID 列表
